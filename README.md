@@ -4,6 +4,8 @@
 
 [한국어](README-ko.md)
 
+> Built to connect OMX and Hermes through tmux-backed local sessions. The notification flow and style were inspired by [Yeachan-Heo/oh-my-codex](https://github.com/Yeachan-Heo/oh-my-codex).
+
 ![Node.js >=20](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)
 ![raw HTTP](https://img.shields.io/badge/http-raw%20node:http-111827)
 ![localhost first](https://img.shields.io/badge/security-localhost--first-blue)

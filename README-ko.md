@@ -4,6 +4,8 @@
 
 [English](README.md)
 
+> tmux 기반 로컬 세션으로 OMX와 Hermes를 연결하기 위해 만들었습니다. Notification 흐름과 스타일은 [Yeachan-Heo/oh-my-codex](https://github.com/Yeachan-Heo/oh-my-codex)를 참고했습니다.
+
 ![Node.js >=20](https://img.shields.io/badge/node-%3E%3D20-339933?logo=node.js&logoColor=white)
 ![raw HTTP](https://img.shields.io/badge/http-raw%20node:http-111827)
 ![localhost first](https://img.shields.io/badge/security-localhost--first-blue)
