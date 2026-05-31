@@ -11,7 +11,7 @@
 ![localhost first](https://img.shields.io/badge/security-localhost--first-blue)
 ![tests](https://img.shields.io/badge/tests-node%20--test-brightgreen)
 
-`hermes-codex-notify` is the **notification bridge**: a small, auditable HTTP service and helper CLI set that lets Hermes receive and act on local Codex session events. It discovers sessions from local logs and tmux, reads full Codex answers, dispatches follow-up commands into visible tmux panes, and forwards selected events to Discord through Hermes Gateway.
+`hermes-codex-notify` is the **notification bridge**: a small, auditable HTTP service, Codex hook layer, and helper CLI set that lets Hermes receive and act on local Codex session events. The hook layer is installed by default so lifecycle and final-answer events are event-driven instead of relying on full transcript polling. The bridge still keeps Codex JSONL parsing as a diagnostic fallback.
 
 ```text
 Hermes / Discord
@@ -47,8 +47,9 @@ Use it when you want to:
 
 ## Highlights
 
-- **Session discovery** — merges bridge-owned lifecycle records, Codex JSONL sessions, and tmux panes into one bridge session view.
-- **Full output access** — reads Codex session logs for latest assistant/final-answer text.
+- **Codex hook layer** — installs bridge-owned `SessionStart`, `UserPromptSubmit`, `Stop`, and `notify` handlers by default. Pass `--no-hooks` only when another harness owns Codex hooks.
+- **Session discovery** — merges bridge-owned hook/lifecycle records, Codex JSONL fallback sessions, and tmux panes into one bridge session view.
+- **Full output access** — uses hook-captured final-answer events first and keeps Codex session logs for latest assistant/final-answer fallback.
 - **Command dispatch** — sends follow-up instructions to the visible tmux pane. The retired Codex App Server command backend is not used in production.
 - **Bundled helper CLIs** — ships bridge lifecycle tools (`codex-new`, `codex-send`, `codex-kill`) in `bin/`.
 - **Event delivery** — sends `AskPermission` and `FinalAnswer` through the Hermes webhook path, while `SessionStart`, `SessionLinked`, `SessionEnd`, and `CommandSubmitted` use the direct Discord fast path. Standalone `SessionIdle` skeleton notifications are suppressed.
@@ -97,7 +98,7 @@ Expected health response:
 | Helper CLIs only | `bin/install.sh --force` | You only need `codex-new`, `codex-send`, and `codex-kill` on `PATH`; this wraps `scripts/install-codex-cli.sh`. |
 | Systemd user service only | `scripts/install-systemd-service.sh --host 127.0.0.1 --port 3037` | You want to manage the bridge server separately. |
 
-The service is installed as a **systemd user service**. Use `systemctl --user ...`, not system-wide `systemctl ...`.
+The stack and service installers install the Codex hook layer by default. The installer edits the target `CODEX_HOME` only when it is actually run; use `--codex-home <path>` for test installs and `--no-hooks` to skip hook registration. The service is installed as a **systemd user service**. Use `systemctl --user ...`, not system-wide `systemctl ...`.
 
 ## Configuration
 

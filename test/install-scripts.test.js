@@ -12,6 +12,7 @@ async function tempEnv() {
   const home = await mkdtemp(join(tmpdir(), 'hermes-codex-notify-install-'));
   return {
     ...process.env,
+    NODE: process.execPath,
     HOME: home,
     XDG_CONFIG_HOME: join(home, '.config'),
     XDG_STATE_HOME: join(home, '.local', 'state'),
@@ -92,6 +93,59 @@ test('install-systemd-service enables Discord fast-path events with Hermes bot r
   assert.match(stdout, /BRIDGE_NOTIFY_INCLUDE_UNMAPPED_CODEX_LOGS=true/);
   assert.match(stdout, /DISCORD_ALERT_CHANNEL_ID=123456789012345678/);
   assert.match(stdout, /BRIDGE_DISCORD_MENTION_USERS=456789012345678901/);
+});
+
+test('install-systemd-service installs Codex hook layer by default in dry-run', async () => {
+  const env = await tempEnv();
+  const { stdout } = await execFile('bash', [
+    'scripts/install-systemd-service.sh',
+    '--dry-run',
+    '--no-start',
+    '--repo-root', process.cwd(),
+    '--npm', '/usr/bin/npm',
+    '--state-root', join(env.HOME, '.local', 'state', 'bridge-state'),
+  ], { env, maxBuffer: 1024 * 1024 });
+
+  assert.match(stdout, /install-codex-hooks\.sh/);
+  assert.match(stdout, /bridge-codex-hook/);
+  assert.match(stdout, /Codex hooks:\s+.*\.codex/);
+  assert.match(stdout, /BRIDGE_STATE_ROOT=.*bridge-state/);
+});
+
+test('install-systemd-service can skip Codex hook layer explicitly', async () => {
+  const env = await tempEnv();
+  const { stdout } = await execFile('bash', [
+    'scripts/install-systemd-service.sh',
+    '--dry-run',
+    '--no-start',
+    '--repo-root', process.cwd(),
+    '--npm', '/usr/bin/npm',
+    '--no-hooks',
+  ], { env, maxBuffer: 1024 * 1024 });
+
+  assert.doesNotMatch(stdout, /install-codex-hooks\.sh/);
+  assert.match(stdout, /Codex hooks:\s+disabled/);
+});
+
+test('install-codex-hooks writes hook entries and notify command under fake CODEX_HOME', async () => {
+  const env = await tempEnv();
+  const codexHome = join(env.HOME, '.codex-test');
+  const stateRoot = join(env.HOME, '.local', 'state', 'bridge-state');
+  await execFile('bash', [
+    'scripts/install-codex-hooks.sh',
+    '--repo-root', process.cwd(),
+    '--codex-home', codexHome,
+    '--state-root', stateRoot,
+  ], { env, maxBuffer: 1024 * 1024 });
+
+  const hooks = JSON.parse(await readFile(join(codexHome, 'hooks.json'), 'utf8'));
+  assert.match(hooks.hooks.SessionStart[0].hooks[0].command, /bridge-codex-hook/);
+  assert.match(hooks.hooks.UserPromptSubmit[0].hooks[0].command, /BRIDGE_STATE_ROOT=/);
+  assert.match(hooks.hooks.Stop[0].hooks[0].command, /bridge-codex-hook/);
+  const config = await readFile(join(codexHome, 'config.toml'), 'utf8');
+  assert.match(config, /hooks = true/);
+  assert.equal(config.includes('notify = ["env", "BRIDGE_STATE_ROOT='), true);
+  assert.match(config, /bridge-codex-hook/);
 });
 
 test('install-systemd-service can enable Discord session thread creation explicitly', async () => {

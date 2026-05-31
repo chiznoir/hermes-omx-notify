@@ -2,6 +2,7 @@ import { findCodexLogBySessionId, isAuxiliaryCodexLog, readCodexLog } from '../c
 import { readBridgeCommands } from '../interactions.js';
 import { readAuditLog, auditEventToRouterEvent } from './audit-log.js';
 import { readBridgeLogRecords, bridgeRecordToRouterEvent } from '../adapters/bridge-lifecycle.js';
+import { bridgeHookRecordToRouterEvents, readBridgeHookRecords } from '../codex-hooks.js';
 import { hookRecordToRouterEvent, readTmuxHookRecords } from '../adapters/tmux-hooks.js';
 import { stripSyntheticNotificationContext } from '../synthetic-context.js';
 
@@ -276,7 +277,8 @@ async function readCodexFallbackEventsForLog(session = {}, bridgeCommands = []) 
 
 export async function readBridgeAdapterEvents(session = {}, options = {}) {
   const projectRoot = options.projectRoot || process.cwd();
-  const codexRecords = await readBridgeLogRecords(projectRoot);
+  const codexRecords = await readBridgeLogRecords(projectRoot, options);
+  const bridgeHookRecords = await readBridgeHookRecords(projectRoot, options);
   const hookRecords = await readTmuxHookRecords(projectRoot);
   const events = [];
 
@@ -285,6 +287,11 @@ export async function readBridgeAdapterEvents(session = {}, options = {}) {
     if (!isWithinSessionWindow(record.timestamp || record._ts, session)) continue;
     events.push(bridgeRecordToRouterEvent(record));
   }
+  for (const record of bridgeHookRecords) {
+    if (!matchesSession(session, record.session_id, record.native_session_id, record.thread_id)) continue;
+    if (!isWithinSessionWindow(record.timestamp || record._ts, session)) continue;
+    events.push(...bridgeHookRecordToRouterEvents(record));
+  }
   for (const record of hookRecords) {
     const paneId = record.target && typeof record.target === 'object' ? record.target.value : null;
     if (!matchesSession(session, record.thread_id, paneId)) continue;
@@ -292,6 +299,14 @@ export async function readBridgeAdapterEvents(session = {}, options = {}) {
     events.push(hookRecordToRouterEvent(record));
   }
   return events;
+}
+
+function codexLogFallbackEnabled(session = {}, options = {}) {
+  if (options.codexLogFallback === true) return true;
+  if (options.codexLogFallback === false) return false;
+  const explicit = process.env.BRIDGE_CODEX_LOG_FALLBACK;
+  if (explicit != null && explicit !== '') return !['0', 'false', 'no', 'off'].includes(String(explicit).toLowerCase());
+  return session.lifecycleOwner !== 'bridge-hook';
 }
 
 export async function routeSessionEvents(session = {}, options = {}) {
@@ -327,8 +342,11 @@ export async function routeSessionEvents(session = {}, options = {}) {
 
   const bridgeCommands = await readBridgeCommands(session, { ...options, projectRoot: bridgeProjectRoot });
   events.push(...await readBridgeCommandEvents(session, { ...options, projectRoot: bridgeProjectRoot, bridgeCommands }));
-  events.push(...await readCodexFallbackEvents(session, { ...options, bridgeCommands }));
-  events.push(...await readBridgeAdapterEvents(session, { projectRoot }));
+  const adapterEvents = await readBridgeAdapterEvents(session, { ...options, projectRoot });
+  events.push(...adapterEvents);
+  if (codexLogFallbackEnabled(session, options)) {
+    events.push(...await readCodexFallbackEvents(session, { ...options, bridgeCommands }));
+  }
 
   const auditEvents = await readAuditLog({ sessionId: session.bridgeSessionId, threadId: session.codexThreadId }, { ...options, projectRoot: bridgeProjectRoot });
   for (const record of auditEvents) events.push(auditEventToRouterEvent(record));

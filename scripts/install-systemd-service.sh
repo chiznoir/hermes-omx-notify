@@ -22,6 +22,9 @@ Options:
   --project-root PATH     Optional fixed Codex project root to scan
   --repo-root PATH        Bridge repository root (default: parent of scripts/)
   --state-root PATH       Bridge-owned state/log/cache root
+  --codex-home PATH       Codex home for hook installation (default: CODEX_HOME or ~/.codex)
+  --no-hooks              Do not install/update Codex hook layer
+  --force-notify          Replace an existing non-bridge Codex notify command
   --token TOKEN           Bearer token for bridge API (optional for 127.0.0.1)
   --token-file PATH       Read Bearer token from first line of file
   --notify                Enable bridge Discord notifier (default: disabled)
@@ -77,6 +80,9 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 project_root=""
 state_root=""
+codex_home="${CODEX_HOME:-$HOME/.codex}"
+install_hooks=1
+force_notify=0
 token="${BRIDGE_TOKEN:-}"
 token_file=""
 webhook=""
@@ -113,6 +119,9 @@ while [[ $# -gt 0 ]]; do
     --project-root) project_root="${2:?missing --project-root value}"; shift 2 ;;
     --repo-root) repo_root="${2:?missing --repo-root value}"; shift 2 ;;
     --state-root) state_root="${2:?missing --state-root value}"; shift 2 ;;
+    --codex-home) codex_home="${2:?missing --codex-home value}"; shift 2 ;;
+    --no-hooks) install_hooks=0; shift ;;
+    --force-notify) force_notify=1; shift ;;
     --token) token="${2:?missing --token value}"; shift 2 ;;
     --token-file) token_file="${2:?missing --token-file value}"; shift 2 ;;
     --notify) notify_enabled="true"; shift ;;
@@ -196,6 +205,7 @@ fi
 
 state_root="${state_root:-$default_state_root}"
 state_root="$(realpath -m "$state_root")"
+codex_home="$(realpath -m "$codex_home")"
 if [[ -n "$project_root" ]]; then
   project_root="$(realpath -m "$project_root")"
 fi
@@ -371,11 +381,30 @@ if [[ "$start_service" == "1" ]]; then
   run_systemctl restart "$name.service"
 fi
 
+if [[ "$install_hooks" == "1" ]]; then
+  hook_args=("$repo_root/scripts/install-codex-hooks.sh" --repo-root "$repo_root" --codex-home "$codex_home" --state-root "$state_root")
+  if [[ "$force_notify" == "1" ]]; then
+    hook_args+=(--force-notify)
+  fi
+  if [[ "$dry_run" == "1" ]]; then
+    hook_args+=(--dry-run)
+    printf 'DRY-RUN:'
+    for part in "${hook_args[@]}"; do
+      printf ' %q' "$part"
+    done
+    printf '\n'
+    "${hook_args[@]}"
+  else
+    "${hook_args[@]}"
+  fi
+fi
+
 cat <<EOF2
 Installed $name.service ($scope)
 Service file: $service_path
 Env file:     $env_file
 State root:   $state_root
+Codex hooks:  $(if [[ "$install_hooks" == "1" ]]; then echo "$codex_home"; else echo "disabled"; fi)
 Project root: ${project_root:-tmux-discovered}
 Host:         $host
 Port:         $port

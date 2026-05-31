@@ -134,6 +134,13 @@ Use hermes-codex-notify to check bridge health and sessions.
 
 ## 6. Runtime env complexity rule
 
+The installer registers the bridge-owned Codex hook layer by default. That hook
+layer is the canonical event source for `SessionStart`, `UserPromptSubmit`,
+turn-complete/final-answer, and idle state. `~/.codex/sessions` JSONL parsing is
+kept only as a fallback/diagnostic path. Use `--no-hooks` only when another
+managed harness owns Codex hooks, and use `--codex-home <path>` for dry-run or
+test installs.
+
 The runtime env file should contain only enabled features, secrets/IDs, and non-default overrides. Do not repeat built-in defaults. `scripts/install-systemd-service.sh` and `scripts/install-hermes-stack.sh` generate systemd env files using this rule. If you edit by hand, use `.env.example` as a sample and uncomment only the values you need.
 
 ### Required/recommended env

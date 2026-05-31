@@ -15,9 +15,10 @@ channel mappings. Pass flags only for automation/non-interactive installs.
 
 What it does:
   1. installs codex-new/codex-send/codex-kill helper CLIs from this repository
-  2. installs the Hermes skill
-  3. installs/restarts the bridge systemd service for Hermes agent bridge access
-  4. optionally enables the Hermes Gateway webhook sink when --webhook is passed
+  2. installs the bridge-owned Codex hook layer
+  3. installs the Hermes skill
+  4. installs/restarts the bridge systemd service for Hermes agent bridge access
+  5. optionally enables the Hermes Gateway webhook sink when --webhook is passed
 
 Options:
   --channel ID                   Fallback Discord channel id for project alerts
@@ -30,6 +31,9 @@ Options:
   --copy-cli                     Copy helper CLIs instead of symlinking them
   --no-force-cli                 Do not replace existing helper CLI targets
   --skip-cli                     Do not install codex-new/codex-send/codex-kill
+  --codex-home PATH              Codex home for hook installation (default: CODEX_HOME or ~/.codex)
+  --no-hooks                     Do not install/update the Codex hook layer
+  --force-notify                 Replace an existing non-bridge Codex notify command
   --bridge-host HOST             Bridge bind host (default: 127.0.0.1)
   --bridge-port PORT             Bridge port (default: 3037)
   --webhook                      Enable Hermes Gateway webhook sink and subscription (default: off)
@@ -66,7 +70,9 @@ Notes:
   - When --webhook is enabled, default notification mode is direct and
     Discord project channels / per-session threads are auto-created when the
     Discord bot token and guild id are available.
-  - Helper CLIs are installed from repo bin/ and do not modify Codex global hooks.
+  - The Codex hook layer is installed by default because lifecycle/final-answer
+    notifications are event-driven through hooks. Pass --no-hooks only when
+    another managed harness owns Codex hooks.
   - If --webhook is enabled, Hermes Gateway must have WEBHOOK_ENABLED=true
     and WEBHOOK_SECRET matching the generated secret.
 USAGE
@@ -77,6 +83,7 @@ repo_root="$(cd "$script_dir/.." && pwd)"
 project_root=""
 state_root=""
 hermes_home="${HERMES_HOME:-$HOME/.hermes}"
+codex_home="${CODEX_HOME:-$HOME/.codex}"
 cli_dir="${CODEX_CLI_INSTALL_DIR:-$HOME/.local/bin}"
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hermes-codex-notify"
 secret_file="$config_dir/hermes-webhook.secret"
@@ -102,6 +109,8 @@ start_service=1
 dry_run=0
 non_interactive=0
 skip_cli=0
+install_hooks=1
+force_notify=0
 copy_cli=0
 force_cli=1
 project_channels=()
@@ -118,6 +127,9 @@ while [[ $# -gt 0 ]]; do
     --copy-cli) copy_cli=1; shift ;;
     --no-force-cli) force_cli=0; shift ;;
     --skip-cli) skip_cli=1; shift ;;
+    --codex-home) codex_home="${2:?missing --codex-home value}"; shift 2 ;;
+    --no-hooks) install_hooks=0; shift ;;
+    --force-notify) force_notify=1; shift ;;
     --bridge-host) bridge_host="${2:?missing --bridge-host value}"; shift 2 ;;
     --bridge-port) bridge_port="${2:?missing --bridge-port value}"; shift 2 ;;
     --webhook) webhook_sink_enabled=1; shift ;;
@@ -155,6 +167,7 @@ esac
 
 repo_root="$(cd "$repo_root" && pwd)"
 cli_dir="$(realpath -m "$cli_dir")"
+codex_home="$(realpath -m "$codex_home")"
 if [[ -n "$project_root" ]]; then
   project_root="$(realpath -m "$project_root")"
 fi
@@ -514,6 +527,7 @@ service_args=(
   --host "$bridge_host"
   --port "$bridge_port"
   --repo-root "$repo_root"
+  --codex-home "$codex_home"
   --no-notify
 )
 if [[ -n "$project_root" ]]; then
@@ -521,6 +535,12 @@ if [[ -n "$project_root" ]]; then
 fi
 if [[ -n "$state_root" ]]; then
   service_args+=(--state-root "$state_root")
+fi
+if [[ "$install_hooks" != "1" ]]; then
+  service_args+=(--no-hooks)
+fi
+if [[ "$force_notify" == "1" ]]; then
+  service_args+=(--force-notify)
 fi
 if [[ "$webhook_sink_enabled" == "1" ]]; then
   service_args+=(
@@ -587,6 +607,7 @@ Hermes Codex Notify stack install complete.
 
 Mode: $(if [[ "$webhook_sink_enabled" == "1" ]]; then echo "Hermes webhook sink"; else echo "Hermes agent bridge"; fi)
 Helper CLIs: $(if [[ "$skip_cli" == "1" ]]; then echo "skipped"; else echo "$cli_dir"; fi)
+Codex hooks: $(if [[ "$install_hooks" == "1" ]]; then echo "$codex_home"; else echo "disabled"; fi)
 
 Check:
   curl -sS http://$bridge_host:$bridge_port/health

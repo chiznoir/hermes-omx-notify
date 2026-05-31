@@ -1,0 +1,34 @@
+#!/usr/bin/env node
+import { appendFile, mkdir } from 'node:fs/promises';
+import { dirname } from 'node:path';
+import { bridgeStatePath } from '../src/bridge-paths.js';
+import { recordCodexHookPayload } from '../src/codex-hooks.js';
+
+async function readPayload() {
+  const arg = process.argv[process.argv.length - 1];
+  if (arg && arg !== process.argv[1] && !arg.startsWith('-')) {
+    return JSON.parse(arg);
+  }
+  const chunks = [];
+  for await (const chunk of process.stdin) chunks.push(chunk);
+  const raw = Buffer.concat(chunks).toString('utf8').trim();
+  return raw ? JSON.parse(raw) : {};
+}
+
+async function logError(error) {
+  const path = bridgeStatePath('hook-errors.jsonl');
+  await mkdir(dirname(path), { recursive: true }).catch(() => {});
+  await appendFile(path, `${JSON.stringify({
+    timestamp: new Date().toISOString(),
+    source: 'bridge-codex-hook',
+    error: error?.message || String(error),
+  })}\n`, 'utf8').catch(() => {});
+}
+
+try {
+  const payload = await readPayload();
+  await recordCodexHookPayload(payload);
+} catch (error) {
+  await logError(error);
+  console.error(`[bridge-codex-hook] ${error?.message || error}`);
+}

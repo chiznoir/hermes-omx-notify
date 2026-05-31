@@ -139,6 +139,13 @@ hermes-codex-notify로 bridge health와 sessions를 확인해줘.
 
 ## 6. env 복잡도 기준
 
+Installer는 bridge-owned Codex hook layer를 기본 등록합니다. 이 hook layer가
+`SessionStart`, `UserPromptSubmit`, turn-complete/final-answer, idle 상태의
+canonical event source입니다. `~/.codex/sessions` JSONL parsing은
+fallback/diagnostic 경로로만 남깁니다. 다른 managed harness가 Codex hook을
+소유할 때만 `--no-hooks`를 쓰고, dry-run/test 설치에는 `--codex-home <path>`를
+사용하세요.
+
 런타임 env file은 기본값을 반복하지 않고 “운영자가 켠 기능과 비밀/ID”만 남겨야 합니다. `scripts/install-systemd-service.sh`와 `scripts/install-hermes-stack.sh`도 이 기준으로 systemd env를 생성합니다. 사람이 직접 편집할 때는 `.env.example`을 샘플로 보되, 주석 처리된 값 중 필요한 것만 풀어 쓰세요.
 
 ### 필수/권장 env
