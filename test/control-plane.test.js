@@ -28,8 +28,8 @@ async function withEnv(env, fn) {
 }
 
 test('session kind policy infers team, tmux, and codex-thread sessions', () => {
-  assert.equal(inferSessionKind({ cwd: '/home/user/work/codex-bridge/.codex/team/worker-1', project: 'worker-1' }), 'codex-team');
-  assert.equal(inferSessionKind({ tmuxId: 'tmux-1', project: 'codex-bridge' }), 'codex-tmux');
+  assert.equal(inferSessionKind({ cwd: '/home/user/work/codex-notify/.codex/team/worker-1', project: 'worker-1' }), 'codex-team');
+  assert.equal(inferSessionKind({ tmuxId: 'tmux-1', project: 'codex-notify' }), 'codex-tmux');
   assert.equal(inferSessionKind({ project: 'plain-codex' }), 'codex-thread');
 });
 
@@ -569,7 +569,7 @@ esac
 
 test.skip('session index discovers Codex 0.16 sandboxed isolated state roots by source cwd', async () => {
   const root = await mkdtemp(join(tmpdir(), 'codex-sandboxed-source-'));
-  const projectRoot = join(root, 'codex-bridge');
+  const projectRoot = join(root, 'codex-notify');
   const runsDir = join(root, 'codex-runs');
   const runRoot = join(runsDir, 'run-20260506044818-0b73');
   const codexHome = join(root, 'codex-home');
@@ -615,7 +615,7 @@ test.skip('session index discovers Codex 0.16 sandboxed isolated state roots by 
   assert.equal(sessions[0].codexSessionId, 'codex-sandboxed');
   assert.equal(sessions[0].lifecycleSessionId, 'codex-sandboxed');
   assert.equal(sessions[0].cwd, projectRoot);
-  assert.equal(sessions[0].project, 'codex-bridge');
+  assert.equal(sessions[0].project, 'codex-notify');
   assert.equal(sessions[0].lifecycleRoot, runRoot);
 
   const events = await routeSessionEvents(sessions[0], { projectRoot: sessions[0].lifecycleRoot });
@@ -839,7 +839,7 @@ test.skip('session index does not emit SessionEnd for replaced native helper ses
 
 test.skip('session index routes resumed slash-command logs while keeping the owned Codex lifecycle canonical', async () => {
   const root = await mkdtemp(join(tmpdir(), 'codex-resume-active-log-'));
-  const projectRoot = join(root, 'codex-bridge');
+  const projectRoot = join(root, 'codex-notify');
   const runRoot = join(root, 'codex-runs', 'run-20260510190111-7aac');
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '10');
@@ -1249,7 +1249,7 @@ test('router emits remapped SessionStart only after the primary Codex log has a 
     lifecycleSessionId: 'codex-visible',
     startedAt: '2026-05-10T11:59:00.000Z',
     hasBridgeLifecycle: true,
-    project: 'codex-bridge',
+    project: 'codex-notify',
   };
   const beforePrompt = await routeSessionEvents({
     ...base,

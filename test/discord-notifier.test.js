@@ -32,7 +32,7 @@ async function withEnv(env, fn) {
 
 test('eventToDiscordChunks splits long Codex messages for Discord webhook delivery', () => {
   const session = {
-    project: 'codex-bridge',
+    project: 'codex-notify',
     lifecycleSessionId: 'codex-session',
     codexThreadId: 'codex-thread',
     tmuxId: 'tmux-session',
@@ -50,7 +50,7 @@ test('eventToDiscordChunks splits long Codex messages for Discord webhook delive
   assert.match(chunks[0], /# Session Idle/);
   assert.match(chunks[0], /\*\*session:\*\* `codex-session`/);
   assert.match(chunks[0], /\*\*tmux:\*\* `tmux-session`/);
-  assert.match(chunks[0], /\*\*project:\*\* `codex-bridge`/);
+  assert.match(chunks[0], /\*\*project:\*\* `codex-notify`/);
   assert.doesNotMatch(chunks[0], /\*\*Session:\*\*/);
   assert.doesNotMatch(chunks[0], /\*\*Thread:\*\*/);
   assert.doesNotMatch(chunks[0], /\*\*Time:\*\*/);
@@ -65,7 +65,7 @@ test('eventToDiscordChunks splits long Codex messages for Discord webhook delive
 
 test('eventToDiscordChunks escapes nested code fences', () => {
   const [message] = eventToDiscordChunks(
-    { project: 'codex-bridge', codexThreadId: 'thread' },
+    { project: 'codex-notify', codexThreadId: 'thread' },
     {
       type: 'FinalAnswer',
       source: 'codex-log',
@@ -79,7 +79,7 @@ test('eventToDiscordChunks escapes nested code fences', () => {
 
 test('eventToDiscordChunks renders markdown tables as Discord-safe aligned text', () => {
   const [message] = eventToDiscordChunks(
-    { project: 'codex-bridge', lifecycleSessionId: 'session-1' },
+    { project: 'codex-notify', lifecycleSessionId: 'session-1' },
     {
       type: 'FinalAnswer',
       source: 'codex-log',
@@ -102,7 +102,7 @@ test('eventToDiscordChunks renders markdown tables as Discord-safe aligned text'
 
 
 test('pollDiscordNotifications ignores FinalAnswer and SessionIdle by default even when env-like event types include them', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-no-final-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-no-final-'));
   const codexHome = join(root, 'codex-home');
   const statePath = join(root, 'state.json');
   await mkdir(join(root, '.codex', 'logs'), { recursive: true });
@@ -141,7 +141,7 @@ test('pollDiscordNotifications ignores FinalAnswer and SessionIdle by default ev
 
 
 test('pollDiscordNotifications ignores pre-indexed FinalAnswer and SessionIdle pending events by default', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-indexed-no-final-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-indexed-no-final-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const index = await openEventIndex(root, { eventIndexPath });
@@ -150,7 +150,7 @@ test('pollDiscordNotifications ignores pre-indexed FinalAnswer and SessionIdle p
       bridgeSessionId: 'codex-indexed-final-blocked',
       lifecycleSessionId: 'codex-indexed-final-blocked',
       codexThreadId: 'codex-indexed-final-blocked',
-      project: 'codex-bridge',
+      project: 'codex-notify',
       status: 'active',
     };
     upsertEvents(index.db, [
@@ -202,12 +202,12 @@ test('pollDiscordNotifications ignores pre-indexed FinalAnswer and SessionIdle p
 
 test('eventToDiscordChunks formats session lifecycle cleanly', () => {
   const [message] = eventToDiscordChunks(
-    { project: 'codex-bridge', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
+    { project: 'codex-notify', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
     { type: 'SessionStart', source: 'codex-log', timestamp: '2026-04-30T00:00:00.000Z', text: 'session started' },
   );
   assert.match(message, /# Session Start/);
   assert.match(message, /\*\*session:\*\* `thread-1`/);
-  assert.match(message, /\*\*project:\*\* `codex-bridge`/);
+  assert.match(message, /\*\*project:\*\* `codex-notify`/);
   assert.match(message, /\*\*time:\*\* AM 9:00:00/);
   assert.match(message, /\*\*tmux:\*\* `tmux-1`/);
   assert.doesNotMatch(message, /```/);
@@ -215,12 +215,12 @@ test('eventToDiscordChunks formats session lifecycle cleanly', () => {
 
 test('eventToDiscordChunks can mention configured users on SessionStart only', () => {
   const [start] = eventToDiscordChunks(
-    { project: 'codex-bridge', codexThreadId: 'thread-1' },
+    { project: 'codex-notify', codexThreadId: 'thread-1' },
     { type: 'SessionStart', source: 'notification', timestamp: '2026-04-30T00:00:00.000Z', text: 'session started' },
     { discordMentionUsers: ['456789012345678901'] },
   );
   const [command] = eventToDiscordChunks(
-    { project: 'codex-bridge', codexThreadId: 'thread-1' },
+    { project: 'codex-notify', codexThreadId: 'thread-1' },
     { type: 'CommandSubmitted', source: 'bridge-interactions', timestamp: '2026-04-30T00:00:01.000Z', text: 'prompt' },
     { discordMentionUsers: ['456789012345678901'] },
   );
@@ -231,7 +231,7 @@ test('eventToDiscordChunks can mention configured users on SessionStart only', (
 
 test('eventToDiscordChunks formats SessionLinked separately from SessionStart', () => {
   const [message] = eventToDiscordChunks(
-    { project: 'codex-bridge', lifecycleSessionId: 'codex-visible', codexThreadId: 'codex-resumed' },
+    { project: 'codex-notify', lifecycleSessionId: 'codex-visible', codexThreadId: 'codex-resumed' },
     {
       type: 'SessionLinked',
       source: 'notification',
@@ -248,7 +248,7 @@ test('eventToDiscordChunks formats SessionLinked separately from SessionStart', 
 
 test('eventToDiscordChunks formats user prompt events', () => {
   const [message] = eventToDiscordChunks(
-    { project: 'codex-bridge', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
+    { project: 'codex-notify', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
     {
       type: 'CommandSubmitted',
       source: 'bridge-interactions',
@@ -267,13 +267,13 @@ test('eventToDiscordChunks formats user prompt events', () => {
   assert.match(message, /# User Command/);
   assert.match(message, /원문 프롬프트/);
   assert.match(message, /``\u200b`bash/);
-  assert.match(message, /\*\*session:\*\* `thread-1`\n\*\*tmux:\*\* `tmux-1` \| \*\*project:\*\* `codex-bridge`/);
+  assert.match(message, /\*\*session:\*\* `thread-1`\n\*\*tmux:\*\* `tmux-1` \| \*\*project:\*\* `codex-notify`/);
   assert.doesNotMatch(message, /subagent_notification|agent_path/);
 });
 
 test('eventToDiscordChunks sends up to three continued notifications for long User Command events', () => {
   const chunks = eventToDiscordChunks(
-    { project: 'codex-bridge', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
+    { project: 'codex-notify', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
     {
       type: 'CommandSubmitted',
       source: 'bridge-interactions',
@@ -298,7 +298,7 @@ test('eventToDiscordChunks sends up to three continued notifications for long Us
 
 test('eventToDiscordChunks does not strip subagent notifications from FinalAnswer events', () => {
   const [message] = eventToDiscordChunks(
-    { project: 'codex-bridge', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
+    { project: 'codex-notify', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
     {
       type: 'FinalAnswer',
       source: 'codex-log',
@@ -313,27 +313,27 @@ test('eventToDiscordChunks does not strip subagent notifications from FinalAnswe
 
 test('eventToDiscordChunks formats idle and commentary events', () => {
   const [idle] = eventToDiscordChunks(
-    { project: 'codex-bridge', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
+    { project: 'codex-notify', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
     { type: 'SessionIdle', source: 'codex-log', timestamp: '2026-04-30T00:00:01.000Z', text: '작업 완료. 다음 지시를 기다리는 상태입니다.' },
   );
   const [commentary] = eventToDiscordChunks(
-    { project: 'codex-bridge', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
+    { project: 'codex-notify', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
     { type: 'Commentary', source: 'codex-log', timestamp: '2026-04-30T00:00:02.000Z', text: '중간 상태 공유입니다.' },
   );
   assert.match(idle, /# Session Idle/);
   assert.match(idle, /\*\*Recent output:\*\*/);
   assert.match(idle, /작업 완료/);
-  assert.match(idle, /\*\*session:\*\* `thread-1`\n\*\*tmux:\*\* `tmux-1` \| \*\*project:\*\* `codex-bridge`/);
+  assert.match(idle, /\*\*session:\*\* `thread-1`\n\*\*tmux:\*\* `tmux-1` \| \*\*project:\*\* `codex-notify`/);
   assert.doesNotMatch(idle, /\*\*Session:\*\*/);
   assert.doesNotMatch(idle, /\*\*Thread:\*\*/);
   assert.match(commentary, /# Commentary/);
   assert.match(commentary, /중간 상태 공유/);
-  assert.match(commentary, /\*\*session:\*\* `thread-1`\n\*\*tmux:\*\* `tmux-1` \| \*\*project:\*\* `codex-bridge`/);
+  assert.match(commentary, /\*\*session:\*\* `thread-1`\n\*\*tmux:\*\* `tmux-1` \| \*\*project:\*\* `codex-notify`/);
 });
 
 test('eventToDiscordChunks renders long SessionIdle chunks as one continued notification', () => {
   const chunks = eventToDiscordChunks(
-    { project: 'codex-bridge', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
+    { project: 'codex-notify', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
     { type: 'SessionIdle', source: 'codex-log', timestamp: '2026-04-30T00:00:01.000Z', text: '작업 완료. 다음 지시를 기다리는 상태입니다. '.repeat(500) },
   );
 
@@ -350,7 +350,7 @@ test('eventToDiscordChunks renders long SessionIdle chunks as one continued noti
 
 test('eventToDiscordChunks formats session end like Codex notification', () => {
   const [message] = eventToDiscordChunks(
-    { project: 'codex-bridge', lifecycleSessionId: 'codex-session', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
+    { project: 'codex-notify', lifecycleSessionId: 'codex-session', codexThreadId: 'thread-1', tmuxId: 'tmux-1' },
     { type: 'SessionEnd', source: 'notification', timestamp: '2026-04-30T00:18:34.000Z', text: 'ended', durationMs: 1114000, reason: 'session_exit' },
   );
   assert.match(message, /# Session Ended/);
@@ -358,7 +358,7 @@ test('eventToDiscordChunks formats session end like Codex notification', () => {
   assert.match(message, /\*\*duration:\*\* 18m 34s/);
   assert.match(message, /\*\*reason:\*\* session_exit/);
   assert.match(message, /\*\*tmux:\*\* `tmux-1`/);
-  assert.match(message, /\*\*project:\*\* `codex-bridge`/);
+  assert.match(message, /\*\*project:\*\* `codex-notify`/);
   assert.doesNotMatch(message, /\*\*thread:\*\*/);
 });
 
@@ -371,7 +371,7 @@ test('pollDiscordNotifications is a no-op without a Discord destination', async 
 });
 
 test('pollDiscordNotifications ignores unmapped Codex fallback logs by default', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-unmapped-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-unmapped-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '04');
   const statePath = join(root, 'state.json');
@@ -401,7 +401,7 @@ test('pollDiscordNotifications ignores unmapped Codex fallback logs by default',
 });
 
 test('pollDiscordNotifications suppresses Codex team worker session notifications', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-teamworker-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-teamworker-'));
   const projectRoot = join(root, 'chiz-crab');
   const workerRoot = join(projectRoot, '.codex', 'team', 'extractor-safety', 'worktrees', 'worker-1');
   const codexHome = join(root, 'codex-home');
@@ -437,7 +437,7 @@ test('pollDiscordNotifications suppresses Codex team worker session notification
 });
 
 test('pollDiscordNotifications sends user prompts by default from Codex log', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-prompt-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-prompt-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '06');
   const statePath = join(root, 'state.json');
@@ -474,7 +474,7 @@ test('pollDiscordNotifications sends user prompts by default from Codex log', as
 });
 
 test('pollDiscordNotifications routes fast events to mapped Discord project channels with a bot token', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-fast-channel-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-fast-channel-'));
   const codexHome = join(root, 'codex-home');
   const statePath = join(root, 'state.json');
   await mkdir(join(root, '.codex', 'logs'), { recursive: true });
@@ -517,7 +517,7 @@ test('pollDiscordNotifications routes fast events to mapped Discord project chan
 });
 
 test('pollDiscordNotifications can auto create a Discord session thread inside the mapped project channel', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-session-thread-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-session-thread-'));
   const codexHome = join(root, 'codex-home');
   const statePath = join(root, 'state.json');
   const mapPath = join(root, 'project-channels.json');
@@ -582,7 +582,7 @@ test('pollDiscordNotifications can auto create a Discord session thread inside t
 });
 
 test('pollDiscordNotifications repairs Hermes allowlist for parent project channel before thread delivery', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-fast-allowlist-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-fast-allowlist-'));
   const codexHome = join(root, 'codex-home');
   const statePath = join(root, 'state.json');
   const mapPath = join(root, 'project-channels.json');
@@ -653,7 +653,7 @@ test('pollDiscordNotifications repairs Hermes allowlist for parent project chann
 });
 
 test('pollDiscordNotifications reuses a mapped Discord session thread without creating duplicates', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-session-thread-reuse-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-session-thread-reuse-'));
   const codexHome = join(root, 'codex-home');
   const statePath = join(root, 'state.json');
   const mapPath = join(root, 'project-channels.json');
@@ -707,7 +707,7 @@ test('pollDiscordNotifications reuses a mapped Discord session thread without cr
 });
 
 test.skip('pollDiscordNotifications sends CommandSubmitted to the owning mapped session thread', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-owner-thread-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-owner-thread-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const mapPath = join(root, 'project-channels.json');
@@ -798,7 +798,7 @@ test.skip('pollDiscordNotifications sends CommandSubmitted to the owning mapped 
 });
 
 test.skip('pollDiscordNotifications retargets stale resumed Codex commands to the current Codex session thread', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-resume-current-thread-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-resume-current-thread-'));
   const projectRoot = join(root, 'news-insight');
   const oldRunRoot = join(root, 'codex-runs', 'run-old');
   const newRunRoot = join(root, 'codex-runs', 'run-new');
@@ -956,7 +956,7 @@ fi
 });
 
 test.skip('pollDiscordNotifications sends SessionEnd only to the owning mapped session thread', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-end-thread-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-end-thread-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const mapPath = join(root, 'project-channels.json');
@@ -1050,7 +1050,7 @@ test.skip('pollDiscordNotifications sends SessionEnd only to the owning mapped s
 });
 
 test('pollDiscordNotifications does not fall back to project channel for unmapped SessionEnd', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-end-project-channel-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-end-project-channel-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const mapPath = join(root, 'project-channels.json');
@@ -1127,7 +1127,7 @@ test('pollDiscordNotifications does not fall back to project channel for unmappe
 
 
 test.skip('pollDiscordNotifications does not fall back to project channel for terminal events without a session thread', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-terminal-no-channel-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-terminal-no-channel-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const mapPath = join(root, 'project-channels.json');
@@ -1187,7 +1187,7 @@ test.skip('pollDiscordNotifications does not fall back to project channel for te
 });
 
 test.skip('pollDiscordNotifications records SessionEnd delivery failure instead of falling back from a mismatched mapped thread', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-end-no-fallback-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-end-no-fallback-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const mapPath = join(root, 'project-channels.json');
@@ -1269,7 +1269,7 @@ test.skip('pollDiscordNotifications records SessionEnd delivery failure instead 
 });
 
 test('pollDiscordNotifications holds new same-session events while an older retry is waiting', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-failed-retry-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-failed-retry-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const session = {
@@ -1277,7 +1277,7 @@ test('pollDiscordNotifications holds new same-session events while an older retr
     codexThreadId: 'codex-new-command',
     codexSessionId: 'codex-new-command',
     lifecycleSessionId: 'codex-new-command',
-    project: 'codex-bridge',
+    project: 'codex-notify',
     status: 'active',
     hasBridgeLifecycle: true,
   };
@@ -1332,7 +1332,7 @@ test('pollDiscordNotifications holds new same-session events while an older retr
 });
 
 test.skip('pollDiscordNotifications holds queued commands behind pending Hermes final delivery', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-cross-sink-final-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-cross-sink-final-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const session = {
@@ -1340,7 +1340,7 @@ test.skip('pollDiscordNotifications holds queued commands behind pending Hermes 
     codexThreadId: 'codex-queue-command',
     codexSessionId: 'codex-queue-command',
     lifecycleSessionId: 'codex-queue-command',
-    project: 'codex-bridge',
+    project: 'codex-notify',
     status: 'active',
     hasBridgeLifecycle: true,
   };
@@ -1418,7 +1418,7 @@ test.skip('pollDiscordNotifications holds queued commands behind pending Hermes 
 });
 
 test('pollDiscordNotifications indexes non-notified final answers as command blockers', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-index-final-blocker-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-index-final-blocker-'));
   const codexHome = join(root, 'codex-home');
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
@@ -1502,7 +1502,7 @@ test('pollDiscordNotifications indexes non-notified final answers as command blo
 });
 
 test.skip('pollDiscordNotifications can disable final-answer command blocking with short env', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-final-block-env-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-final-block-env-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const session = {
@@ -1510,7 +1510,7 @@ test.skip('pollDiscordNotifications can disable final-answer command blocking wi
     codexThreadId: 'codex-queue-command',
     codexSessionId: 'codex-queue-command',
     lifecycleSessionId: 'codex-queue-command',
-    project: 'codex-bridge',
+    project: 'codex-notify',
     status: 'active',
     hasBridgeLifecycle: true,
   };
@@ -1566,14 +1566,14 @@ test.skip('pollDiscordNotifications can disable final-answer command blocking wi
 });
 
 test('pollDiscordNotifications retries the head event immediately before sending the next event', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-immediate-retry-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-immediate-retry-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const index = await openEventIndex(root, { eventIndexPath });
   try {
     upsertEvents(index.db, [
       {
-        session: { bridgeSessionId: 'old-session', project: 'codex-bridge', status: 'active', hasBridgeLifecycle: true },
+        session: { bridgeSessionId: 'old-session', project: 'codex-notify', status: 'active', hasBridgeLifecycle: true },
         event: {
           eventId: 'old-command',
           type: 'CommandSubmitted',
@@ -1583,7 +1583,7 @@ test('pollDiscordNotifications retries the head event immediately before sending
         },
       },
       {
-        session: { bridgeSessionId: 'new-session', project: 'codex-bridge', status: 'active', hasBridgeLifecycle: true },
+        session: { bridgeSessionId: 'new-session', project: 'codex-notify', status: 'active', hasBridgeLifecycle: true },
         event: {
           eventId: 'new-command',
           type: 'CommandSubmitted',
@@ -1628,14 +1628,14 @@ test('pollDiscordNotifications retries the head event immediately before sending
 });
 
 test('pollDiscordNotifications marks the head event dead after bounded retries before advancing', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-bounded-dead-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-bounded-dead-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const index = await openEventIndex(root, { eventIndexPath });
   try {
     upsertEvents(index.db, [
       {
-        session: { bridgeSessionId: 'old-session', project: 'codex-bridge', status: 'active', hasBridgeLifecycle: true },
+        session: { bridgeSessionId: 'old-session', project: 'codex-notify', status: 'active', hasBridgeLifecycle: true },
         event: {
           eventId: 'old-command',
           type: 'CommandSubmitted',
@@ -1645,7 +1645,7 @@ test('pollDiscordNotifications marks the head event dead after bounded retries b
         },
       },
       {
-        session: { bridgeSessionId: 'new-session', project: 'codex-bridge', status: 'active', hasBridgeLifecycle: true },
+        session: { bridgeSessionId: 'new-session', project: 'codex-notify', status: 'active', hasBridgeLifecycle: true },
         event: {
           eventId: 'new-command',
           type: 'CommandSubmitted',
@@ -1705,7 +1705,7 @@ test('pollDiscordNotifications marks the head event dead after bounded retries b
 });
 
 test('pollDiscordNotifications marks permanent Discord HTTP failures dead without retry and emits an alert', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-permanent-http-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-permanent-http-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const mapPath = join(root, 'project-channels.json');
@@ -1773,7 +1773,7 @@ test('pollDiscordNotifications marks permanent Discord HTTP failures dead withou
 });
 
 test('pollDiscordNotifications waits briefly for short Discord 429 Retry-After before retrying', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-short-rate-limit-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-short-rate-limit-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const index = await openEventIndex(root, { eventIndexPath });
@@ -1827,7 +1827,7 @@ test('pollDiscordNotifications waits briefly for short Discord 429 Retry-After b
 });
 
 test('pollDiscordNotifications holds a long Discord 429 without sending later events out of order', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-long-rate-limit-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-long-rate-limit-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const index = await openEventIndex(root, { eventIndexPath });
@@ -1904,7 +1904,7 @@ test('pollDiscordNotifications holds a long Discord 429 without sending later ev
 });
 
 test('pollDiscordNotifications times out a hanging Discord post attempt and retries within the bounded budget', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-timeout-retry-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-timeout-retry-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const index = await openEventIndex(root, { eventIndexPath });
@@ -1952,7 +1952,7 @@ test('pollDiscordNotifications times out a hanging Discord post attempt and retr
 });
 
 test('pollDiscordNotifications keeps multi-chunk delivery unsent when a later chunk is dead', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-partial-chunk-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-partial-chunk-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const longCommand = `${'첫 번째 조각 '.repeat(260)}${'두 번째 조각 '.repeat(260)}`;
@@ -2017,7 +2017,7 @@ test('pollDiscordNotifications keeps multi-chunk delivery unsent when a later ch
 });
 
 test('pollDiscordNotifications does not replay old non-active remapped SessionStart after restart', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-remapped-start-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-remapped-start-'));
   const codexHome = join(root, 'codex-home');
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
@@ -2104,7 +2104,7 @@ test('pollDiscordNotifications does not replay old non-active remapped SessionSt
 
 
 test('pollDiscordNotifications sends all opt-in long FinalAnswer chunks to the same session thread', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-final-thread-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-final-thread-'));
   const codexHome = join(root, 'codex-home');
   const statePath = join(root, 'state.json');
   const mapPath = join(root, 'project-channels.json');
@@ -2156,7 +2156,7 @@ test('pollDiscordNotifications sends all opt-in long FinalAnswer chunks to the s
 });
 
 test('pollDiscordNotifications keeps opt-in FinalAnswer delivery before a later user command', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-near-final-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-near-final-'));
   const codexHome = join(root, 'codex-home');
   const statePath = join(root, 'state.json');
   await mkdir(join(root, '.codex', 'logs'), { recursive: true });
@@ -2199,7 +2199,7 @@ test('pollDiscordNotifications keeps opt-in FinalAnswer delivery before a later 
 });
 
 test('pollDiscordNotifications does not create missing threads for opt-in FinalAnswer events', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-final-no-thread-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-final-no-thread-'));
   const codexHome = join(root, 'codex-home');
   const statePath = join(root, 'state.json');
   const mapPath = join(root, 'project-channels.json');
@@ -2247,7 +2247,7 @@ test('pollDiscordNotifications does not create missing threads for opt-in FinalA
 });
 
 test('pollDiscordNotifications does not auto-create raw-id threads for codex-only command events', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-discord-codex-only-command-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-discord-codex-only-command-'));
   const codexHome = join(root, 'codex-home');
   const statePath = join(root, 'state.json');
   const mapPath = join(root, 'project-channels.json');

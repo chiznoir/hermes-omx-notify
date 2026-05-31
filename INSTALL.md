@@ -1,13 +1,13 @@
-# INSTALL — Hermes Codex Bridge
+# INSTALL — Hermes Codex Notify
 
 This file is written as a direct runbook for Hermes or another automation agent. Follow it from top to bottom and do not print secrets, tokens, or webhook URLs in the final report.
 
 ## Goal
 
-Install a same-host `hermes-codex-bridge` stack that provides:
+Install a same-host `hermes-codex-notify` stack that provides:
 
 1. `codex-new`, `codex-send`, and `codex-kill` helper CLIs on `PATH`.
-2. The `hermes-codex-bridge` Hermes skill.
+2. The `hermes-codex-notify` Hermes skill.
 3. The localhost bridge server as a systemd user service.
 4. Optional Hermes Gateway webhook subscription for Discord delivery.
 
@@ -57,8 +57,8 @@ If a value is missing, stop and ask the operator instead of inventing one. Repor
 ## Clone and verify
 
 ```bash
-git clone https://github.com/chiznoir/hermes-codex-bridge.git
-cd hermes-codex-bridge
+git clone https://github.com/chiznoir/hermes-codex-notify.git
+cd hermes-codex-notify
 npm install
 npm test
 ```
@@ -157,29 +157,29 @@ scripts/install-systemd-service.sh \
 For non-localhost exposure, generate a token and pass the token file:
 
 ```bash
-mkdir -p ~/.config/hermes-codex-bridge
-openssl rand -hex 32 > ~/.config/hermes-codex-bridge/bridge.token
-chmod 600 ~/.config/hermes-codex-bridge/bridge.token
+mkdir -p ~/.config/hermes-codex-notify
+openssl rand -hex 32 > ~/.config/hermes-codex-notify/bridge.token
+chmod 600 ~/.config/hermes-codex-notify/bridge.token
 
 scripts/install-systemd-service.sh \
   --host 127.0.0.1 \
   --port 3037 \
-  --token-file ~/.config/hermes-codex-bridge/bridge.token
+  --token-file ~/.config/hermes-codex-notify/bridge.token
 ```
 
 ### 4. Optional webhook sink
 
 ```bash
-mkdir -p ~/.config/hermes-codex-bridge
-openssl rand -hex 32 > ~/.config/hermes-codex-bridge/hermes-webhook.secret
-chmod 600 ~/.config/hermes-codex-bridge/hermes-webhook.secret
+mkdir -p ~/.config/hermes-codex-notify
+openssl rand -hex 32 > ~/.config/hermes-codex-notify/hermes-webhook.secret
+chmod 600 ~/.config/hermes-codex-notify/hermes-webhook.secret
 
 scripts/install-systemd-service.sh \
   --host 127.0.0.1 \
   --port 3037 \
   --sink \
-  --sink-url http://127.0.0.1:8644/webhooks/codex-bridge \
-  --secret-file ~/.config/hermes-codex-bridge/hermes-webhook.secret \
+  --sink-url http://127.0.0.1:8644/webhooks/codex-notify \
+  --secret-file ~/.config/hermes-codex-notify/hermes-webhook.secret \
   --channel <fallback-discord-channel-id> \
   --config ~/.hermes/config.yaml
 ```
@@ -189,7 +189,7 @@ Prefer `scripts/install-hermes-stack.sh --webhook` when possible because it also
 ## Validation
 
 ```bash
-systemctl --user status hermes-codex-bridge.service --no-pager
+systemctl --user status hermes-codex-notify.service --no-pager
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
 command -v codex-new
@@ -202,8 +202,8 @@ Webhook mode validation:
 
 ```bash
 curl -sS http://127.0.0.1:8644/health
-hermes webhook list | grep codex-bridge
-journalctl --user -u hermes-codex-bridge.service --no-pager -n 100 | grep 'bridge Hermes webhook sink enabled'
+hermes webhook list | grep codex-notify
+journalctl --user -u hermes-codex-notify.service --no-pager -n 100 | grep 'bridge Hermes webhook sink enabled'
 ```
 
 ## Final report format

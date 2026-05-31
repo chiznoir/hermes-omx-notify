@@ -2,15 +2,15 @@
 
 [English](bridge-hermes-only-install.md) | **한국어**
 
-이 문서는 새 PC나 새 Hermes Agent에 **hermes-codex-bridge와 Hermes/Discord 알림 연동만** 설치할 때 사용합니다. bridge와 알림 연동에 필요한 최소 구성만 설치합니다.
+이 문서는 새 PC나 새 Hermes Agent에 **hermes-codex-notify와 Hermes/Discord 알림 연동만** 설치할 때 사용합니다. bridge와 알림 연동에 필요한 최소 구성만 설치합니다.
 
 ## 목표
 
 설치 후 아래만 동작하면 완료입니다.
 
-1. `hermes-codex-bridge` server가 `127.0.0.1:3037`에서 systemd user service로 실행된다.
-2. Hermes에 `hermes-codex-bridge`, `codex-new`, `codex-send`, `codex-kill` skill이 설치된다.
-3. Hermes Gateway webhook subscription `codex-bridge`가 `AskPermission,FinalAnswer` 이벤트를 받는다.
+1. `hermes-codex-notify` server가 `127.0.0.1:3037`에서 systemd user service로 실행된다.
+2. Hermes에 `hermes-codex-notify`, `codex-new`, `codex-send`, `codex-kill` skill이 설치된다.
+3. Hermes Gateway webhook subscription `codex-notify`가 `AskPermission,FinalAnswer` 이벤트를 받는다.
 4. Discord project channel 또는 session thread로 알림이 전달된다.
 5. `codex-new`, `codex-send`, `codex-kill` helper CLI가 `PATH`에 있다.
 
@@ -37,7 +37,7 @@
 
 권장:
 
-- project별 Discord channel mapping: 예) `hermes-codex-bridge=345678901234567890`
+- project별 Discord channel mapping: 예) `hermes-codex-notify=345678901234567890`
 - SessionStart mention 대상 Discord user ID: 예) `456789012345678901`
 
 선택:
@@ -71,8 +71,8 @@ Gateway env 위치가 환경마다 다르므로 agent는 위치를 추정하지 
 ## clone과 검증
 
 ```bash
-git clone https://github.com/chiznoir/hermes-codex-bridge.git
-cd hermes-codex-bridge
+git clone https://github.com/chiznoir/hermes-codex-notify.git
+cd hermes-codex-notify
 npm install
 npm test
 ```
@@ -105,7 +105,7 @@ scripts/install-hermes-stack.sh \
   --direct \
   --threads \
   --channel <fallback-discord-channel-id> \
-  --project hermes-codex-bridge=<project-channel-id> \
+  --project hermes-codex-notify=<project-channel-id> \
   --project other-project=<other-project-channel-id> \
   --bot-token '<discord-bot-token>' \
   --guild <discord-guild-or-server-id> \
@@ -116,9 +116,9 @@ scripts/install-hermes-stack.sh \
 Docker/LAN/reverse proxy/public으로 노출하면 token file을 만들고 `--token-file`을 추가합니다.
 
 ```bash
-mkdir -p ~/.config/hermes-codex-bridge
-openssl rand -hex 32 > ~/.config/hermes-codex-bridge/bridge.token
-chmod 600 ~/.config/hermes-codex-bridge/bridge.token
+mkdir -p ~/.config/hermes-codex-notify
+openssl rand -hex 32 > ~/.config/hermes-codex-notify/bridge.token
+chmod 600 ~/.config/hermes-codex-notify/bridge.token
 
 scripts/install-hermes-stack.sh \
   --webhook \
@@ -131,7 +131,7 @@ scripts/install-hermes-stack.sh \
   --bot-token '<discord-bot-token>' \
   --guild <discord-guild-or-server-id> \
   --mention-users <discord-user-id> \
-  --token-file ~/.config/hermes-codex-bridge/bridge.token
+  --token-file ~/.config/hermes-codex-notify/bridge.token
 ```
 
 ## 정말 “Hermes가 직접 조회만” 하는 bridge-only 모드
@@ -151,29 +151,29 @@ scripts/install-hermes-stack.sh --non-interactive --restart
 ~/.local/bin/codex-new
 ~/.local/bin/codex-send
 ~/.local/bin/codex-kill
-~/.hermes/skills/autonomous-ai-agents/hermes-codex-bridge/SKILL.md
+~/.hermes/skills/autonomous-ai-agents/hermes-codex-notify/SKILL.md
 ~/.hermes/skills/autonomous-ai-agents/codex-new/SKILL.md
 ~/.hermes/skills/autonomous-ai-agents/codex-send/SKILL.md
 ~/.hermes/skills/autonomous-ai-agents/codex-kill/SKILL.md
-~/.config/systemd/user/hermes-codex-bridge.service
-~/.config/hermes-codex-bridge/hermes-codex-bridge.env
-~/.config/hermes-codex-bridge/hermes-webhook.secret
-~/.config/hermes-codex-bridge/project-channels.json
+~/.config/systemd/user/hermes-codex-notify.service
+~/.config/hermes-codex-notify/hermes-codex-notify.env
+~/.config/hermes-codex-notify/hermes-webhook.secret
+~/.config/hermes-codex-notify/project-channels.json
 ~/.hermes/webhook_subscriptions.json
 ```
 
 ## 검증
 
 ```bash
-systemctl --user is-active hermes-codex-bridge.service
-systemctl --user status hermes-codex-bridge.service --no-pager
+systemctl --user is-active hermes-codex-notify.service
+systemctl --user status hermes-codex-notify.service --no-pager
 curl -fsS http://127.0.0.1:3037/health | jq .
 
 systemctl --user is-active hermes-gateway.service
 curl -fsS http://127.0.0.1:8644/health | jq .
 
 command -v codex-new codex-send codex-kill
-hermes skills list | grep 'hermes-codex-bridge'
+hermes skills list | grep 'hermes-codex-notify'
 ```
 
 Webhook subscription prompt가 오래된 규칙을 갖지 않는지도 확인합니다.
@@ -184,12 +184,12 @@ python - <<'PY'
 import json, os
 p = os.path.expanduser('~/.hermes/webhook_subscriptions.json')
 data = json.load(open(p))
-sub = data.get('codex-bridge') or data.get('subscriptions', {}).get('codex-bridge')
+sub = data.get('codex-notify') or data.get('subscriptions', {}).get('codex-notify')
 prompt = sub.get('prompt', '') if sub else ''
 assert sub and sub.get('events') == ['AskPermission', 'FinalAnswer']
 assert '제목 `Final Answer`' not in prompt
 assert 'Session Idle' in prompt
-print('ok: codex-bridge subscription prompt is current')
+print('ok: codex-notify subscription prompt is current')
 PY
 ```
 
@@ -223,8 +223,8 @@ codex-send --session <bridge-session-id-or-tmux-id> '짧게 현재 cwd와 작업
 ## 실패 시 확인 순서
 
 ```bash
-systemctl --user status hermes-codex-bridge.service --no-pager
-journalctl --user -u hermes-codex-bridge.service -n 100 --no-pager
+systemctl --user status hermes-codex-notify.service --no-pager
+journalctl --user -u hermes-codex-notify.service -n 100 --no-pager
 systemctl --user status hermes-gateway.service --no-pager
 journalctl --user -u hermes-gateway.service -n 100 --no-pager
 curl -fsS http://127.0.0.1:3037/sessions | jq '.sessions | length'
@@ -232,6 +232,6 @@ curl -fsS http://127.0.0.1:3037/sessions | jq '.sessions | length'
 
 원칙:
 
-- `~/.config/hermes-codex-bridge/hermes-codex-bridge.env`에는 켠 기능, secret/token 경로 또는 값, non-default override만 둡니다.
+- `~/.config/hermes-codex-notify/hermes-codex-notify.env`에는 켠 기능, secret/token 경로 또는 값, non-default override만 둡니다.
 - secret/token 원문은 최종 보고에 쓰지 않습니다.
 - 별도 agent-extension 도구 문제는 이 runbook의 blocker로 취급하지 않습니다.

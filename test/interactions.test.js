@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { readBridgeCommands } from '../src/interactions.js';
 
 test('readBridgeCommands ignores stale commands from reused tmux panes outside the session window', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-interactions-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-interactions-'));
   await mkdir(join(root, '.codex', 'logs'), { recursive: true });
   await writeFile(join(root, '.codex', 'logs', 'bridge-interactions.jsonl'), [
     {

@@ -11,7 +11,7 @@ Usage:
   bin/install.sh [install-codex-cli options]
 
 Description:
-  Install only the core hermes-codex-bridge helper CLIs onto PATH:
+  Install only the core hermes-codex-notify helper CLIs onto PATH:
     codex-new
     codex-send
     codex-kill

@@ -7,7 +7,7 @@ prerequisites:
 metadata:
   hermes:
     tags: [codex, bridge, tmux, codex, session]
-    related_skills: [hermes-codex-bridge, codex-send, codex-kill]
+    related_skills: [hermes-codex-notify, codex-send, codex-kill]
     requires_toolsets: [terminal]
     triggers:
       - 새 세션, 세션 열어, 시작해, create/launch/start/watch a new Codex session -> codex-new
@@ -23,7 +23,7 @@ Hermes should use `codex-new` rather than raw `codex`; the helper owns tmux sess
 ## Boundary
 
 - Owns: creating/launching a new visible Codex session.
-- Does not own: sending prompts to an existing session (`codex-send`), killing sessions (`codex-kill`), or bridge read/status inspection (`hermes-codex-bridge`).
+- Does not own: sending prompts to an existing session (`codex-send`), killing sessions (`codex-kill`), or bridge read/status inspection (`hermes-codex-notify`).
 - Bridge webhook `SessionStart` alert bodies are notifications, not requests to create another session.
 - `/new` or `/resume` inside an existing Codex pane prompt is a Codex slash command and should be delivered by `codex-send`, not handled here.
 
@@ -49,7 +49,7 @@ codex-new /path/to/repo --name codex-project-main
 CODEX_EFFORT=high codex-new /path/to/repo
 ```
 
-After launch, use `hermes-codex-bridge` or:
+After launch, use `hermes-codex-notify` or:
 
 ```bash
 codex-send --project <project> "현재 상태를 요약해줘"

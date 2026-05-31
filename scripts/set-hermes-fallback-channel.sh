@@ -6,20 +6,20 @@ usage() {
 Usage:
   scripts/set-hermes-fallback-channel.sh CHANNEL_ID [options]
 
-Update the Hermes Codex Bridge fallback Discord channel in both:
+Update the Hermes Codex Notify fallback Discord channel in both:
   - project channel map default
   - bridge service env fallback keys
 
 Options:
   --map PATH           Channel map path
                        (default: $BRIDGE_HERMES_PROJECT_CHANNEL_MAP or
-                        ~/.config/hermes-codex-bridge/project-channels.json)
+                        ~/.config/hermes-codex-notify/project-channels.json)
   --env-file PATH      Bridge service env file
-                       (default: ~/.config/hermes-codex-bridge/hermes-codex-bridge.env)
+                       (default: ~/.config/hermes-codex-notify/hermes-codex-notify.env)
   --restart            Restart the user systemd bridge service after updating
   --no-restart         Do not restart the service (default)
   --service NAME       systemd --user service name
-                       (default: hermes-codex-bridge.service)
+                       (default: hermes-codex-notify.service)
   --dry-run            Print intended changes without writing files
   -h, --help           Show this help
 
@@ -34,9 +34,9 @@ die() {
 }
 
 channel_id=""
-channel_map="${BRIDGE_HERMES_PROJECT_CHANNEL_MAP:-$HOME/.config/hermes-codex-bridge/project-channels.json}"
-env_file="$HOME/.config/hermes-codex-bridge/hermes-codex-bridge.env"
-service_name="hermes-codex-bridge.service"
+channel_map="${BRIDGE_HERMES_PROJECT_CHANNEL_MAP:-$HOME/.config/hermes-codex-notify/project-channels.json}"
+env_file="$HOME/.config/hermes-codex-notify/hermes-codex-notify.env"
+service_name="hermes-codex-notify.service"
 restart=false
 dry_run=false
 

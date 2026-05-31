@@ -20,8 +20,8 @@ usage() {
   예: CODEX_EFFORT=high, CODEX_EFFORT=xhigh, CODEX_EFFORT=medium
 
 예시:
-  codex-new ~/work/hermes-codex-bridge
-  CODEX_EFFORT=high codex-new . --name codex-bridge-main --attach
+  codex-new ~/work/hermes-codex-notify
+  CODEX_EFFORT=high codex-new . --name codex-notify-main --attach
   codex-new ~/work/app -- --sandbox workspace-write
 USAGE
 }
@@ -60,7 +60,7 @@ const expandHome = (value) => {
   if (raw.startsWith('~/')) return join(homedir(), raw.slice(2));
   return raw;
 };
-const root = expandHome(process.env.BRIDGE_STATE_ROOT || join(process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state'), 'hermes-codex-bridge'));
+const root = expandHome(process.env.BRIDGE_STATE_ROOT || join(process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state'), 'hermes-codex-notify'));
 await mkdir(root, { recursive: true });
 const now = new Date().toISOString();
 const record = {

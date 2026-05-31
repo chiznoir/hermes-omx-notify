@@ -42,7 +42,7 @@ const expandHome = (value) => {
   if (raw.startsWith('~/')) return join(homedir(), raw.slice(2));
   return raw;
 };
-const root = expandHome(process.env.BRIDGE_STATE_ROOT || join(process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state'), 'hermes-codex-bridge'));
+const root = expandHome(process.env.BRIDGE_STATE_ROOT || join(process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state'), 'hermes-codex-notify'));
 await mkdir(root, { recursive: true });
 const now = new Date().toISOString();
 await appendFile(join(root, 'session-history.jsonl'), `${JSON.stringify({

@@ -1,6 +1,6 @@
-# hermes-codex-bridge/bin — bridge lifecycle helpers
+# hermes-codex-notify/bin — bridge lifecycle helpers
 
-이 디렉터리는 Hermes가 local `hermes-codex-bridge` API와 visible tmux 세션을 다루는 최소 helper CLI만 담습니다.
+이 디렉터리는 Hermes가 local `hermes-codex-notify` notification bridge API와 visible tmux 세션을 다루는 최소 helper CLI만 담습니다.
 
 설치되는 명령:
 

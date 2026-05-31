@@ -87,7 +87,7 @@ export function replacedNativeSessionIds(records = []) {
 
 export function hasExplicitCodexOwnerMetadata(record = {}) {
   const owner = String(record.lifecycle_owner || record.lifecycleOwner || record.owner || '').toLowerCase();
-  return owner === 'codex' || owner === 'codex-bridge' || record.user_facing === true || record.userFacing === true;
+  return owner === 'codex' || owner === 'codex-notify' || record.user_facing === true || record.userFacing === true;
 }
 
 export function isOwnedLifecycleEntry(record = {}, ownedSessionIds = new Set()) {

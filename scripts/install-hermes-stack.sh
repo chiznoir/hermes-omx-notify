@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Install the recommended self-hosted Hermes Codex Bridge stack.
+Install the recommended self-hosted Hermes Codex Notify stack.
 
 This wraps the lower-level installers so a second PC / second Hermes agent can be
 set up with a short command:
@@ -33,7 +33,7 @@ Options:
   --bridge-host HOST             Bridge bind host (default: 127.0.0.1)
   --bridge-port PORT             Bridge port (default: 3037)
   --webhook                      Enable Hermes Gateway webhook sink and subscription (default: off)
-  --no-webhook                   Disable webhook sink and remove codex-bridge subscription (default)
+  --no-webhook                   Disable webhook sink and remove codex-notify subscription (default)
   --url URL                      Hermes webhook URL used only with --webhook
   --mode summary|direct
                                   FinalAnswer mode (default: direct)
@@ -78,14 +78,14 @@ project_root=""
 state_root=""
 hermes_home="${HERMES_HOME:-$HOME/.hermes}"
 cli_dir="${CODEX_CLI_INSTALL_DIR:-$HOME/.local/bin}"
-config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hermes-codex-bridge"
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hermes-codex-notify"
 secret_file="$config_dir/hermes-webhook.secret"
 channel_map="$config_dir/project-channels.json"
 default_channel_id="${BRIDGE_HERMES_DEFAULT_CHANNEL_ID:-}"
 hermes_notification_mode="${BRIDGE_HERMES_NOTIFICATION_MODE:-direct}"
 bridge_host="127.0.0.1"
 bridge_port="3037"
-gateway_url="${BRIDGE_HERMES_WEBHOOK_URL:-http://127.0.0.1:8644/webhooks/codex-bridge}"
+gateway_url="${BRIDGE_HERMES_WEBHOOK_URL:-http://127.0.0.1:8644/webhooks/codex-notify}"
 token="${BRIDGE_TOKEN:-}"
 token_file=""
 discord_bot_token="${BRIDGE_DISCORD_BOT_TOKEN:-${DISCORD_BOT_TOKEN:-}}"
@@ -275,7 +275,7 @@ prompt_missing_inputs() {
     return
   fi
 
-  echo "Hermes Codex Bridge interactive setup"
+  echo "Hermes Codex Notify interactive setup"
   echo "Press Enter to skip optional values."
   echo
 
@@ -401,7 +401,7 @@ Codex Discord 알림·제어 라우터.
 
 FinalAnswer 스타일: 설명 문장은 한국어 중심. `Document graph`(문서 그래프), `keyword_fallback`(키워드 fallback 경로)처럼 첫 뜻 병기. 영어 명사구를 한국어 문장 안에 길게 이어 붙이지 않는다. 명령어/경로/env/hash/PID는 backtick. 파일/설정/커밋/테스트는 대표 묶음, 판단에 필요한 식별자 보존.
 
-전용 skill 경계: `hermes-codex-bridge`는 bridge read/status/notification rendering만 맡는다. 세션 생성은 `codex-new`, 전달/승인/거절은 `codex-send`, 종료는 `codex-kill` skill을 따른다. `codex-send` prompt refinement SSoT는 `skills/codex-send/SKILL.md`이며, temp file/write_file을 쓰더라도 원문 Discord reply가 아니라 정제된 prompt만 기록해야 한다. Discord-originated Hermes dispatch는 정제된 prompt를 바로 보내지 말고 `codex-send --discord-approval`로 bridge-owned `codex-send-approval` question을 만든 다음 `clarify`/AskUserQuestion으로 실제 Discord 승인 카드를 렌더링해야 한다.
+전용 skill 경계: `hermes-codex-notify`는 bridge read/status/notification rendering만 맡는다. 세션 생성은 `codex-new`, 전달/승인/거절은 `codex-send`, 종료는 `codex-kill` skill을 따른다. `codex-send` prompt refinement SSoT는 `skills/codex-send/SKILL.md`이며, temp file/write_file을 쓰더라도 원문 Discord reply가 아니라 정제된 prompt만 기록해야 한다. Discord-originated Hermes dispatch는 정제된 prompt를 바로 보내지 말고 `codex-send --discord-approval`로 bridge-owned `codex-send-approval` question을 만든 다음 `clarify`/AskUserQuestion으로 실제 Discord 승인 카드를 렌더링해야 한다.
 
 원문 그대로 요청: summary 없이 `fullText` 그대로. `payload.message_markdown`, `payload.text_preview`, 알림 조각/tmux capture로 재구성하지 않는다. 전체 원문을 새 ```markdown 코드블럭으로 감싸지 않고, 브리지가 이미 나눈 조각을 순서대로 보내며 markdown fence 보존, 모든 조각 끝 `(i/N)`, 제목 반복 금지. `fullText` 조회 실패/빈 값은 실패 명시.
 
@@ -416,7 +416,7 @@ PROMPT
 install_subscription() {
   local secret prompt_file subscribe_output
   if [[ "$dry_run" == "1" ]]; then
-    echo "DRY-RUN: install/update Hermes webhook subscription codex-bridge in $hermes_home"
+    echo "DRY-RUN: install/update Hermes webhook subscription codex-notify in $hermes_home"
     return
   fi
   secret="$(head -n 1 "$secret_file" | tr -d '\r\n')"
@@ -424,9 +424,9 @@ install_subscription() {
   subscription_prompt > "$prompt_file"
 
   if command -v hermes >/dev/null 2>&1; then
-    if subscribe_output="$(HERMES_HOME="$hermes_home" hermes webhook subscribe codex-bridge \
+    if subscribe_output="$(HERMES_HOME="$hermes_home" hermes webhook subscribe codex-notify \
       --events AskPermission,FinalAnswer \
-      --skills hermes-codex-bridge,codex-new,codex-send,codex-kill \
+      --skills hermes-codex-notify,codex-new,codex-send,codex-kill \
       --deliver discord \
       --deliver-chat-id '{channel_id}' \
       --secret "$secret" \
@@ -451,12 +451,12 @@ if (fs.existsSync(file)) {
   try { data = JSON.parse(fs.readFileSync(file, 'utf8')); }
   catch { data = {}; }
 }
-data['codex-bridge'] = {
-  description: 'Bridge events from hermes-codex-bridge for project-channel summarization',
+data['codex-notify'] = {
+  description: 'Bridge events from hermes-codex-notify for project-channel summarization',
   events: ['AskPermission', 'FinalAnswer'],
   secret: process.env.SECRET,
   prompt: fs.readFileSync(process.env.PROMPT_FILE, 'utf8'),
-  skills: ['hermes-codex-bridge', 'codex-new', 'codex-send', 'codex-kill'],
+  skills: ['hermes-codex-notify', 'codex-new', 'codex-send', 'codex-kill'],
   deliver: 'discord',
   deliver_extra: { chat_id: '{channel_id}' },
   created_at: new Date().toISOString(),
@@ -469,7 +469,7 @@ NODE
 
 remove_subscription() {
   if [[ "$dry_run" == "1" ]]; then
-    echo "DRY-RUN: remove Hermes webhook subscription codex-bridge from $hermes_home if present"
+    echo "DRY-RUN: remove Hermes webhook subscription codex-notify from $hermes_home if present"
     return
   fi
 
@@ -483,8 +483,8 @@ if (!fs.existsSync(file)) process.exit(0);
 let data;
 try { data = JSON.parse(fs.readFileSync(file, 'utf8')); }
 catch { process.exit(0); }
-if (!data || typeof data !== 'object' || !Object.prototype.hasOwnProperty.call(data, 'codex-bridge')) process.exit(0);
-delete data['codex-bridge'];
+if (!data || typeof data !== 'object' || !Object.prototype.hasOwnProperty.call(data, 'codex-notify')) process.exit(0);
+delete data['codex-notify'];
 fs.writeFileSync(file, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
 fs.chmodSync(file, 0o600);
 NODE
@@ -583,14 +583,14 @@ if [[ "$scope" == "system" ]]; then scope_systemctl_arg=""; fi
 
 cat <<EOF2
 
-Hermes Codex Bridge stack install complete.
+Hermes Codex Notify stack install complete.
 
 Mode: $(if [[ "$webhook_sink_enabled" == "1" ]]; then echo "Hermes webhook sink"; else echo "Hermes agent bridge"; fi)
 Helper CLIs: $(if [[ "$skip_cli" == "1" ]]; then echo "skipped"; else echo "$cli_dir"; fi)
 
 Check:
   curl -sS http://$bridge_host:$bridge_port/health
-  systemctl ${scope_systemctl_arg} status hermes-codex-bridge.service
+  systemctl ${scope_systemctl_arg} status hermes-codex-notify.service
 
 Files:
   Hermes home: $hermes_home

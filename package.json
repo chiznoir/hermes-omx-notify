@@ -1,5 +1,5 @@
 {
-  "name": "hermes-codex-bridge",
+  "name": "hermes-codex-notify",
   "version": "0.1.0",
   "type": "module",
   "description": "raw-http bridge between Hermes and Codex/tmux session state",

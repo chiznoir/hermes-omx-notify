@@ -32,7 +32,7 @@ usage() {
   bridgeSessionId, project, activityState, status, tmuxId, lastEventAt
 
 설명:
-  hermes-codex-bridge HTTP API로 Codex 세션에 지시를 보냅니다.
+  hermes-codex-notify HTTP API로 Codex 세션에 지시를 보냅니다.
   기본 mode는 auto이며, live tmux 화면에 반드시 보여야 하면 --mode tmux를 사용합니다.
   기본적으로 Hermes/operator wrapper와 전달 prefix를 제거합니다.
   byte-for-byte에 가까운 전달이 필요할 때만 --raw/--no-normalize를 사용합니다.

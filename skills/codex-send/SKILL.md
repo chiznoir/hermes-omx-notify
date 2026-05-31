@@ -1,13 +1,13 @@
 ---
 name: codex-send
-description: Send a refined follow-up instruction to an existing Codex session through hermes-codex-bridge using the local codex-send helper. Trigger when the user asks to 전달/보내/넘겨/반영/수정/계속 into an Codex session or replies to an Codex notification.
+description: Send a refined follow-up instruction to an existing Codex session through hermes-codex-notify using the local codex-send helper. Trigger when the user asks to 전달/보내/넘겨/반영/수정/계속 into an Codex session or replies to an Codex notification.
 version: 0.2.0
 prerequisites:
   commands: [codex-send]
 metadata:
   hermes:
     tags: [codex, bridge, command, codex, tmux]
-    related_skills: [hermes-codex-bridge, codex-new, codex-kill]
+    related_skills: [hermes-codex-notify, codex-new, codex-kill]
     requires_toolsets: [terminal]
     triggers:
       - 전달, 전달해, 보내, 넘겨, 세션에 전달, follow-up -> codex-send
@@ -21,9 +21,9 @@ metadata:
 
 # Codex Send
 
-This dispatch-specific skill exists because Hermes may load `codex-send` directly when the user names that skill or replies to a session notification. `hermes-codex-bridge` owns bridge read/status/rendering; this file owns the critical dispatch contract so direct `skill_view("codex-send")` does not bypass prompt refinement.
+This dispatch-specific skill exists because Hermes may load `codex-send` directly when the user names that skill or replies to a session notification. `hermes-codex-notify` owns bridge read/status/rendering; this file owns the critical dispatch contract so direct `skill_view("codex-send")` does not bypass prompt refinement.
 
-Use `codex-send` to dispatch commands through hermes-codex-bridge. Do not hand-build raw bridge `curl` calls. Do not silently fall back to raw tmux paste; if bridge delivery fails, report the explicit failure unless the user explicitly asked for visible tmux/manual fallback.
+Use `codex-send` to dispatch commands through hermes-codex-notify. Do not hand-build raw bridge `curl` calls. Do not silently fall back to raw tmux paste; if bridge delivery fails, report the explicit failure unless the user explicitly asked for visible tmux/manual fallback.
 
 For Discord-originated Hermes replies that dispatch a refined prompt into an existing session, use `codex-send --session <id> --discord-approval "<refined prompt>"`, then immediately present the returned approval question through Hermes `clarify` / AskUserQuestion. The bridge command only registers the pending `codex-send-approval`; it does **not** by itself create Discord buttons. The Discord button/card is real only after Hermes calls `clarify` with the refined prompt and choices. Non-Discord/manual helper use may keep plain `codex-send --session <id>` when the user intentionally wants immediate dispatch.
 

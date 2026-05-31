@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Install hermes-codex-bridge as a systemd service.
+Install hermes-codex-notify as a systemd service.
 
 Default installs a per-user service so it can access the same user's ~/.codex,
 tmux socket, and local bridge state. Project Codex logs are discovered from live
@@ -16,7 +16,7 @@ Usage:
 Options:
   --user                  Install systemd user service (default)
   --system                Install system service under /etc/systemd/system
-  --name NAME             Service name (default: hermes-codex-bridge)
+  --name NAME             Service name (default: hermes-codex-notify)
   --host HOST             Bind host (default: 127.0.0.1)
   --port PORT             HTTP port (default: 3037)
   --project-root PATH     Optional fixed Codex project root to scan
@@ -30,7 +30,7 @@ Options:
   --no-notify             Disable bridge Discord notifier
   --sink                  Enable Hermes Gateway webhook sink
   --sink-url URL
-                           Hermes webhook endpoint (default: http://127.0.0.1:8644/webhooks/codex-bridge)
+                           Hermes webhook endpoint (default: http://127.0.0.1:8644/webhooks/codex-notify)
   --secret SECRET
                            HMAC secret for Hermes webhook subscription
   --secret-file PATH
@@ -64,13 +64,13 @@ Options:
   -h, --help              Show this help
 
 Examples:
-  scripts/install-systemd-service.sh --token-file ~/.config/hermes/codex-bridge.token
-  scripts/install-systemd-service.sh --system --state-root /var/lib/hermes-codex-bridge --token 'change-me'
+  scripts/install-systemd-service.sh --token-file ~/.config/hermes/codex-notify.token
+  scripts/install-systemd-service.sh --system --state-root /var/lib/hermes-codex-notify --token 'change-me'
 USAGE
 }
 
 scope="user"
-name="hermes-codex-bridge"
+name="hermes-codex-notify"
 host="127.0.0.1"
 port="3037"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -83,7 +83,7 @@ webhook=""
 webhook_file=""
 notify_enabled="false"
 hermes_webhook_enabled="false"
-hermes_webhook_url="${BRIDGE_HERMES_WEBHOOK_URL:-http://127.0.0.1:8644/webhooks/codex-bridge}"
+hermes_webhook_url="${BRIDGE_HERMES_WEBHOOK_URL:-http://127.0.0.1:8644/webhooks/codex-notify}"
 hermes_webhook_secret="${BRIDGE_HERMES_WEBHOOK_SECRET:-}"
 hermes_webhook_secret_file=""
 hermes_default_channel_id="${BRIDGE_HERMES_DEFAULT_CHANNEL_ID:-}"
@@ -182,14 +182,14 @@ fi
 repo_root="$(cd "$repo_root" && pwd)"
 if [[ "$scope" == "user" ]]; then
   service_dir="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
-  default_env_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hermes-codex-bridge"
-  default_state_root="${XDG_STATE_HOME:-$HOME/.local/state}/hermes-codex-bridge"
+  default_env_dir="${XDG_CONFIG_HOME:-$HOME/.config}/hermes-codex-notify"
+  default_state_root="${XDG_STATE_HOME:-$HOME/.local/state}/hermes-codex-notify"
   systemctl_cmd=(systemctl --user)
   service_path="$service_dir/$name.service"
 else
   service_dir="/etc/systemd/system"
-  default_env_dir="/etc/hermes-codex-bridge"
-  default_state_root="/var/lib/hermes-codex-bridge"
+  default_env_dir="/etc/hermes-codex-notify"
+  default_state_root="/var/lib/hermes-codex-notify"
   systemctl_cmd=(systemctl)
   service_path="$service_dir/$name.service"
 fi
@@ -207,7 +207,7 @@ escaped_path_value="${path_value//\\/\\\\}"
 escaped_path_value="${escaped_path_value//\"/\\\"}"
 
 service_content="[Unit]
-Description=Hermes Codex Bridge
+Description=Hermes Codex Notify
 After=network.target
 
 [Service]
@@ -273,7 +273,7 @@ fi
 if [[ "$hermes_webhook_enabled" == "true" && "$hermes_notification_mode" != "direct" ]]; then
   append_env BRIDGE_HERMES_NOTIFICATION_MODE "$hermes_notification_mode"
 fi
-user_default_channel_map="${XDG_CONFIG_HOME:-$HOME/.config}/hermes-codex-bridge/project-channels.json"
+user_default_channel_map="${XDG_CONFIG_HOME:-$HOME/.config}/hermes-codex-notify/project-channels.json"
 if [[ "$hermes_webhook_enabled" == "true" && -n "$project_channel_map" ]]; then
   if [[ "$scope" == "system" || "$project_channel_map" != "$user_default_channel_map" ]]; then
     append_env BRIDGE_HERMES_PROJECT_CHANNEL_MAP "$project_channel_map"

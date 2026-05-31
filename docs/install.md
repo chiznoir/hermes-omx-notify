@@ -39,14 +39,14 @@ WEBHOOK_SECRET=<same value as the secret file created by scripts/install-hermes-
 ## 2. One-command install
 
 ```bash
-git clone https://github.com/chiznoir/hermes-codex-bridge.git
-cd hermes-codex-bridge
+git clone https://github.com/chiznoir/hermes-codex-notify.git
+cd hermes-codex-notify
 npm test
 scripts/install-hermes-stack.sh \
   --webhook \
   --non-interactive \
   --channel <fallback-discord-channel-id> \
-  --project hermes-codex-bridge=<project-discord-channel-id> \
+  --project hermes-codex-notify=<project-discord-channel-id> \
   --restart
 ```
 
@@ -69,17 +69,17 @@ Created/used files:
 ~/.local/bin/codex-new
 ~/.local/bin/codex-send
 ~/.local/bin/codex-kill
-~/.config/hermes-codex-bridge/hermes-codex-bridge.env
-~/.hermes/skills/autonomous-ai-agents/hermes-codex-bridge/SKILL.md
-~/.config/systemd/user/hermes-codex-bridge.service
+~/.config/hermes-codex-notify/hermes-codex-notify.env
+~/.hermes/skills/autonomous-ai-agents/hermes-codex-notify/SKILL.md
+~/.config/systemd/user/hermes-codex-notify.service
 
 # Only when --webhook is used
-~/.config/hermes-codex-bridge/hermes-webhook.secret
-~/.config/hermes-codex-bridge/project-channels.json
+~/.config/hermes-codex-notify/hermes-webhook.secret
+~/.config/hermes-codex-notify/project-channels.json
 ~/.hermes/webhook_subscriptions.json
 ```
 
-The default scope is `--scope user`. The service is installed under `~/.config/systemd/user/hermes-codex-bridge.service`, not `/etc/systemd/system`. Use `systemctl --user ...` for checks and restarts. The service runs `npm start`, and `package.json` maps that to `node src/server.js`.
+The default scope is `--scope user`. The service is installed under `~/.config/systemd/user/hermes-codex-notify.service`, not `/etc/systemd/system`. Use `systemctl --user ...` for checks and restarts. The service runs `npm start`, and `package.json` maps that to `node src/server.js`.
 
 ## 3. Manual helper CLI install only
 
@@ -99,12 +99,12 @@ This installer does not modify Codex global hooks.
 For localhost-only `127.0.0.1`, a token can be omitted. If another host/container can reach the bridge, enable a token.
 
 ```bash
-mkdir -p ~/.config/hermes-codex-bridge
-openssl rand -hex 32 > ~/.config/hermes-codex-bridge/bridge.token
-chmod 600 ~/.config/hermes-codex-bridge/bridge.token
+mkdir -p ~/.config/hermes-codex-notify
+openssl rand -hex 32 > ~/.config/hermes-codex-notify/bridge.token
+chmod 600 ~/.config/hermes-codex-notify/bridge.token
 
 scripts/install-hermes-stack.sh \
-  --token-file ~/.config/hermes-codex-bridge/bridge.token
+  --token-file ~/.config/hermes-codex-notify/bridge.token
 ```
 
 Set the same token in Hermes Gateway:
@@ -117,9 +117,9 @@ BRIDGE_TOKEN=<bridge.token value>
 ## 5. Validation
 
 ```bash
-systemctl --user list-units --type=service --all | grep hermes-codex-bridge
-systemctl --user status hermes-codex-bridge.service
-systemctl --user cat hermes-codex-bridge.service
+systemctl --user list-units --type=service --all | grep hermes-codex-notify
+systemctl --user status hermes-codex-notify.service
+systemctl --user cat hermes-codex-notify.service
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
 command -v codex-new codex-send codex-kill
@@ -129,7 +129,7 @@ curl -sS http://127.0.0.1:8644/health
 From Discord/Hermes:
 
 ```text
-Use hermes-codex-bridge to check bridge health and sessions.
+Use hermes-codex-notify to check bridge health and sessions.
 ```
 
 ## 6. Runtime env complexity rule
@@ -144,7 +144,7 @@ The runtime env file should contain only enabled features, secrets/IDs, and non-
 
 # Required when enabling Hermes webhook sink
 BRIDGE_HERMES_WEBHOOK_ENABLED=true
-BRIDGE_HERMES_WEBHOOK_URL=http://127.0.0.1:8644/webhooks/codex-bridge
+BRIDGE_HERMES_WEBHOOK_URL=http://127.0.0.1:8644/webhooks/codex-notify
 BRIDGE_HERMES_WEBHOOK_SECRET=<secret>
 BRIDGE_HERMES_DEFAULT_CHANNEL_ID=<fallback-channel-id>
 
@@ -164,10 +164,10 @@ BRIDGE_HERMES_ALLOWLIST=true
 ### Defaults usually omitted
 
 - `HOST=127.0.0.1`, `PORT=3037`, `BRIDGE_PUBLIC_URL=http://127.0.0.1:3037`
-- `BRIDGE_STATE_ROOT=~/.local/state/hermes-codex-bridge` for user services
+- `BRIDGE_STATE_ROOT=~/.local/state/hermes-codex-notify` for user services
 - `BRIDGE_HERMES_WEBHOOK_EVENT_TYPES=AskPermission,FinalAnswer`
 - `BRIDGE_HERMES_NOTIFICATION_MODE=direct`
-- `BRIDGE_HERMES_PROJECT_CHANNEL_MAP=~/.config/hermes-codex-bridge/project-channels.json`
+- `BRIDGE_HERMES_PROJECT_CHANNEL_MAP=~/.config/hermes-codex-notify/project-channels.json`
 - `BRIDGE_NOTIFY_EVENT_TYPES=SessionStart,SessionLinked,SessionEnd,CommandSubmitted`
 - `BRIDGE_NOTIFY_DELIVERY_SINK=discord-fast`
 - `BRIDGE_FINAL_BLOCK=true`, `BRIDGE_FINAL_WAIT_MS=10000`, `BRIDGE_FINAL_SINK=hermes`

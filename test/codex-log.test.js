@@ -46,7 +46,7 @@ test('readCodexLog extracts subagent metadata from session_meta', async () => {
     payload: {
       id: '019e243f-2319-70d2-88cf-257541a85b46',
       timestamp: '2026-05-14T02:09:38.073Z',
-      cwd: '/home/user/work/codex-bridge',
+      cwd: '/home/user/work/codex-notify',
       thread_source: 'subagent',
       agent_nickname: 'Maxwell',
       agent_role: 'architect',
@@ -77,7 +77,7 @@ test('readCodexLog marks codex explore codex exec logs as auxiliary', async () =
     payload: {
       id: '019e3f10-a0c7-7101-a822-9863f208ae57',
       timestamp: '2026-05-19T07:08:34.888Z',
-      cwd: '/home/user/work/codex-bridge',
+      cwd: '/home/user/work/codex-notify',
       originator: 'codex_exec',
       source: 'exec',
       base_instructions: { text: '# Codex Explore Lightweight Instructions\n\nread-only only' },
@@ -101,7 +101,7 @@ test('readCodexLog does not treat normal Codex instructions mentioning codex exp
     payload: {
       id: 'normal-session',
       timestamp: '2026-05-19T08:00:00.000Z',
-      cwd: '/home/user/work/codex-bridge',
+      cwd: '/home/user/work/codex-notify',
       base_instructions: { text: 'Explore Command Preference: Use `codex explore --prompt ...` for simple lookups.' },
     },
   }), 'utf8');

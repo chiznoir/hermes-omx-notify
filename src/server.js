@@ -145,7 +145,7 @@ async function main() {
   const commandNotificationFlusher = createCommandNotificationFlusher({ notifier, hermesSink });
   if (commandNotificationFlusher) commandNotificationFlushers.push(commandNotificationFlusher);
   server.listen(port, host, () => {
-    console.log(`hermes-codex-bridge listening on http://${host}:${port}`);
+    console.log(`hermes-codex-notify listening on http://${host}:${port}`);
     if (notifier.started) console.log('bridge Discord notifier enabled');
     if (hermesSink.started) console.log('bridge Hermes webhook sink enabled');
   });

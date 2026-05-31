@@ -1,4 +1,4 @@
-# hermes-codex-bridge
+# hermes-codex-notify
 
 **Localhost-first bridge core for Hermes, Codex, and tmux-backed agent sessions.**
 
@@ -11,11 +11,11 @@
 ![localhost first](https://img.shields.io/badge/security-localhost--first-blue)
 ![tests](https://img.shields.io/badge/tests-node%20--test-brightgreen)
 
-`hermes-codex-bridge` is the **bridge core**: a small, auditable HTTP service and helper CLI set that lets Hermes work with local Codex sessions. It discovers sessions from local logs and tmux, reads full Codex answers, dispatches follow-up commands into visible tmux panes, and forwards selected events to Discord through Hermes Gateway.
+`hermes-codex-notify` is the **notification bridge**: a small, auditable HTTP service and helper CLI set that lets Hermes receive and act on local Codex session events. It discovers sessions from local logs and tmux, reads full Codex answers, dispatches follow-up commands into visible tmux panes, and forwards selected events to Discord through Hermes Gateway.
 
 ```text
 Hermes / Discord
-  -> hermes-codex-bridge on 127.0.0.1
+  -> hermes-codex-notify on 127.0.0.1
      -> session registry / event router / command dispatch / audit log
   -> local Codex JSONL logs + tmux panes
 ```
@@ -36,7 +36,7 @@ Hermes / Discord
 
 ## Why this exists
 
-Hermes can orchestrate work better when it can see the same local evidence that a developer sees: Codex lifecycle logs, Codex JSONL transcripts, tmux panes, and command/audit history. This bridge keeps that integration local by default and exposes only the narrow API Hermes needs.
+Hermes can orchestrate work better when it receives the same local signals that a developer sees: Codex lifecycle logs, Codex JSONL transcripts, tmux panes, and command/audit history. This project keeps that notification path local by default and exposes only the narrow API Hermes needs.
 
 Use it when you want to:
 
@@ -60,8 +60,8 @@ Use it when you want to:
 For a complete agent-friendly runbook, start with [INSTALL.md](INSTALL.md). For an already prepared Hermes Gateway + Discord host, the shortest path is:
 
 ```bash
-git clone https://github.com/chiznoir/hermes-codex-bridge.git
-cd hermes-codex-bridge
+git clone https://github.com/chiznoir/hermes-codex-notify.git
+cd hermes-codex-notify
 npm install
 npm test
 
@@ -70,13 +70,13 @@ scripts/install-hermes-stack.sh \
   --non-interactive \
   --restart \
   --channel <fallback-discord-channel-id> \
-  --project hermes-codex-bridge=<project-discord-channel-id>
+  --project hermes-codex-notify=<project-discord-channel-id>
 ```
 
 Validate the install:
 
 ```bash
-systemctl --user status hermes-codex-bridge.service --no-pager
+systemctl --user status hermes-codex-notify.service --no-pager
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
 command -v codex-new codex-send codex-kill
@@ -123,7 +123,7 @@ Defaults usually omitted:
 ```env
 # HOST=127.0.0.1
 # PORT=3037
-# BRIDGE_STATE_ROOT=~/.local/state/hermes-codex-bridge
+# BRIDGE_STATE_ROOT=~/.local/state/hermes-codex-notify
 # BRIDGE_PUBLIC_URL=http://127.0.0.1:3037
 ```
 
@@ -147,7 +147,7 @@ Recommended Hermes Gateway webhook + Discord thread setup:
 
 ```env
 BRIDGE_HERMES_WEBHOOK_ENABLED=true
-BRIDGE_HERMES_WEBHOOK_URL=http://127.0.0.1:8644/webhooks/codex-bridge
+BRIDGE_HERMES_WEBHOOK_URL=http://127.0.0.1:8644/webhooks/codex-notify
 BRIDGE_HERMES_WEBHOOK_SECRET=<same-as-Hermes-WEBHOOK_SECRET>
 BRIDGE_HERMES_DEFAULT_CHANNEL_ID=<fallback-discord-channel-id>
 BRIDGE_DISCORD_FAST_EVENTS_ENABLED=true
@@ -158,7 +158,7 @@ BRIDGE_NOTIFY_INCLUDE_UNMAPPED_CODEX_LOGS=true
 BRIDGE_HERMES_ALLOWLIST=true
 ```
 
-`BRIDGE_HERMES_WEBHOOK_EVENT_TYPES=AskPermission,FinalAnswer`, `BRIDGE_HERMES_NOTIFICATION_MODE=direct`, `BRIDGE_HERMES_PROJECT_CHANNEL_MAP=~/.config/hermes-codex-bridge/project-channels.json`, `BRIDGE_NOTIFY_EVENT_TYPES=SessionStart,SessionLinked,SessionEnd,CommandSubmitted`, `BRIDGE_NOTIFY_DELIVERY_SINK=discord-fast`, and `BRIDGE_HERMES_RESTART=true` are defaults or have default paths, so they are usually omitted.
+`BRIDGE_HERMES_WEBHOOK_EVENT_TYPES=AskPermission,FinalAnswer`, `BRIDGE_HERMES_NOTIFICATION_MODE=direct`, `BRIDGE_HERMES_PROJECT_CHANNEL_MAP=~/.config/hermes-codex-notify/project-channels.json`, `BRIDGE_NOTIFY_EVENT_TYPES=SessionStart,SessionLinked,SessionEnd,CommandSubmitted`, `BRIDGE_NOTIFY_DELIVERY_SINK=discord-fast`, and `BRIDGE_HERMES_RESTART=true` are defaults or have default paths, so they are usually omitted.
 
 `BRIDGE_HERMES_ALLOWLIST=true` lets the bridge add newly mapped project channels to Hermes Gateway's Discord allowlists. Session threads are routed under the already-allowed parent/project channel and are not added as separate allowlist entries. Existing entries are checked across YAML continuation lines, so an already allowed channel is a no-op and must not restart Gateway.
 

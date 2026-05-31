@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Install Hermes Codex bridge/read and helper lifecycle skills.
+Install Hermes Codex notify/read and helper lifecycle skills.
 
 Usage:
   scripts/install-hermes-skill.sh [options]
@@ -11,8 +11,8 @@ Usage:
 Options:
   --hermes-home PATH    Hermes home (default: $HERMES_HOME or ~/.hermes)
   --category NAME       Skill category folder (default: autonomous-ai-agents)
-  --name NAME           Skill folder name (default: hermes-codex-bridge)
-  --source PATH         Source skill dir (default: repo skills/hermes-codex-bridge)
+  --name NAME           Skill folder name (default: hermes-codex-notify)
+  --source PATH         Source skill dir (default: repo skills/hermes-codex-notify)
   --no-helper-skills    Do not install codex-new/codex-send/codex-kill helper skills
   --dry-run             Print actions without writing
   -h, --help            Show help
@@ -23,8 +23,8 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 hermes_home="${HERMES_HOME:-$HOME/.hermes}"
 category="autonomous-ai-agents"
-name="hermes-codex-bridge"
-source_dir="$repo_root/skills/hermes-codex-bridge"
+name="hermes-codex-notify"
+source_dir="$repo_root/skills/hermes-codex-notify"
 dry_run=0
 install_helper_skills=1
 
@@ -86,7 +86,7 @@ synced_profile_skills=()
 install_skill "$name" "$source_dir"
 
 installed_helper_skills=()
-if [[ "$install_helper_skills" == "1" && "$name" == "hermes-codex-bridge" && "$source_dir" == "$repo_root/skills/hermes-codex-bridge" ]]; then
+if [[ "$install_helper_skills" == "1" && "$name" == "hermes-codex-notify" && "$source_dir" == "$repo_root/skills/hermes-codex-notify" ]]; then
   for helper_skill in codex-new codex-send codex-kill; do
     helper_source_dir="$repo_root/skills/$helper_skill"
     install_skill "$helper_skill" "$helper_source_dir"

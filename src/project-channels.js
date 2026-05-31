@@ -18,7 +18,7 @@ export function projectChannelMapPath(options = {}) {
     options.projectChannelMapPath
     || process.env.BRIDGE_PROJECT_CHANNEL_MAP
     || process.env.BRIDGE_HERMES_PROJECT_CHANNEL_MAP
-    || join(homedir(), '.config', 'hermes-codex-bridge', 'project-channels.json'),
+    || join(homedir(), '.config', 'hermes-codex-notify', 'project-channels.json'),
   );
 }
 

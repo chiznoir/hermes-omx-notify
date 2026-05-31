@@ -1,6 +1,6 @@
 ---
-name: hermes-codex-bridge
-description: Use the local hermes-codex-bridge read API to inspect bridge health, session lists, session state, latest idle/final answer text, events, interactions, and bridge-owned Discord notification payloads. Do not own session creation, prompt dispatch, or termination; hand those intents to codex-new, codex-send, or codex-kill.
+name: hermes-codex-notify
+description: Use the local hermes-codex-notify read API to inspect bridge health, session lists, session state, latest idle/final answer text, events, interactions, and bridge-owned Discord notification payloads. Do not own session creation, prompt dispatch, or termination; hand those intents to codex-new, codex-send, or codex-kill.
 version: 0.2.0
 author: Hermes Agent
 license: MIT
@@ -23,13 +23,13 @@ metadata:
       - 종료, kill, 킬, 죽여, stop session -> delegate to codex-kill
 ---
 
-# Hermes Codex Bridge
+# Hermes Codex Notify
 
-This is the bridge operations and read-API skill. It teaches Hermes how to read the `hermes-codex-bridge` control plane, interpret bridge-owned event payloads, and render bridge notifications. It is not the owner of session lifecycle mutations.
+This is the bridge operations and read-API skill. It teaches Hermes how to read the `hermes-codex-notify` control plane, interpret bridge-owned event payloads, and render bridge notifications. It is not the owner of session lifecycle mutations.
 
 ## Responsibility Boundary
 
-- `hermes-codex-bridge`: bridge server health, session list, session state, latest idle/final answer fullText, session events, command/interactions history, Discord notification rendering, channel/thread payload interpretation.
+- `hermes-codex-notify`: bridge server health, session list, session state, latest idle/final answer fullText, session events, command/interactions history, Discord notification rendering, channel/thread payload interpretation.
 - `codex-new`: create/start a new visible Codex session.
 - `codex-send`: send/refine a follow-up instruction or approval/denial into an existing session.
 - `codex-kill`: stop/kill/close an existing Codex session.
@@ -78,7 +78,7 @@ Prefer the bridge read API over raw tmux capture for canonical status/history. U
 
 ## Hermes Webhook Sink Mode
 
-If a message arrives from the `codex-bridge` webhook subscription, treat the payload as a bridge event envelope. Important fields include `event_type`, `event_context_line`, `notification_title`, `notification_summary`, `message_markdown`, `project`, `channel_id`, `discord_delivery_target_id`, `chunk_delivery_channel_id`, `channel_mapping_status`, `bridge_session_id`, `thread_id`, `discord_thread_id`, `tmux_id`, `text_preview`, `reply_options`, `approval_actions`, `notification_chunked`, `notification_chunk_index`, `notification_chunk_total`, and `read_endpoints`.
+If a message arrives from the `codex-notify` webhook subscription, treat the payload as a bridge event envelope. Important fields include `event_type`, `event_context_line`, `notification_title`, `notification_summary`, `message_markdown`, `project`, `channel_id`, `discord_delivery_target_id`, `chunk_delivery_channel_id`, `channel_mapping_status`, `bridge_session_id`, `thread_id`, `discord_thread_id`, `tmux_id`, `text_preview`, `reply_options`, `approval_actions`, `notification_chunked`, `notification_chunk_index`, `notification_chunk_total`, and `read_endpoints`.
 
 Notification rendering rules:
 

@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Install hermes-codex-bridge helper CLIs onto PATH.
+Install hermes-codex-notify helper CLIs onto PATH.
 
 Usage:
   scripts/install-codex-cli.sh [options]

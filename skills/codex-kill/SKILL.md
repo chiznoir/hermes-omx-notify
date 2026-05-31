@@ -7,7 +7,7 @@ prerequisites:
 metadata:
   hermes:
     tags: [codex, bridge, tmux, stop, cleanup]
-    related_skills: [hermes-codex-bridge, codex-new, codex-send]
+    related_skills: [hermes-codex-notify, codex-new, codex-send]
     requires_toolsets: [terminal]
     triggers:
       - 종료, 이 세션 종료해, 세션 kill, kill, 킬, 세션 죽여, 죽여, stop/close/clean up session -> codex-kill
@@ -22,7 +22,7 @@ This skill owns existing-session termination. Use `codex-kill` to terminate the 
 ## Boundary
 
 - Owns: stopping/killing/closing an existing Codex session.
-- Does not own: creating sessions (`codex-new`), sending prompts/approvals (`codex-send`), or bridge read/status inspection (`hermes-codex-bridge`).
+- Does not own: creating sessions (`codex-new`), sending prompts/approvals (`codex-send`), or bridge read/status inspection (`hermes-codex-notify`).
 - In Discord notification replies, the target is the replied alert metadata (`bridge_session_id`, `session:`, or exact `tmux:`), not the latest same-project session.
 
 ## Safety

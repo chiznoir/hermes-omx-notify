@@ -19,7 +19,7 @@ import { channelForProject, channelNameForProject, resolveProjectChannel } from 
 import { listDiscordGuildChannels, resolveDiscordGuildId } from '../src/discord-channels.js';
 
 test('ensureHermesDiscordChannelAllowed treats YAML continuation channels as already allowed', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-continuation-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-continuation-'));
   const hermesConfigPath = join(root, 'hermes-config.yaml');
   const original = [
     'discord:',
@@ -48,7 +48,7 @@ test('ensureHermesDiscordChannelAllowed treats YAML continuation channels as alr
 });
 
 test('ensureHermesDiscordChannelAllowed normalizes continuation lists only when adding a missing channel', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-continuation-add-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-continuation-add-'));
   const hermesConfigPath = join(root, 'hermes-config.yaml');
   await writeFile(hermesConfigPath, [
     'discord:',
@@ -79,7 +79,7 @@ test('ensureHermesDiscordChannelAllowed normalizes continuation lists only when 
 });
 
 test('ensureHermesDiscordChannelAllowed reads the short env surface', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-env-surface-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-env-surface-'));
   const hermesConfigPath = join(root, 'hermes-config.yaml');
   await writeFile(hermesConfigPath, [
     'discord:',
@@ -131,7 +131,7 @@ test('eventToHermesPayload builds project-routed bridge context without full-log
       codexSessionId: 'thread-1',
       codexThreadId: 'thread-1',
       tmuxId: 'tmux-1',
-      project: 'codex-bridge',
+      project: 'codex-notify',
       kind: 'codex-tmux',
       status: 'active',
     },
@@ -148,17 +148,17 @@ test('eventToHermesPayload builds project-routed bridge context without full-log
 
   assert.equal(payload.event_type, 'FinalAnswer');
   assert.equal(payload.event_name, 'Session Idle');
-  assert.equal(payload.event_context_line, '**session:** `bridge-1`\n**tmux:** `tmux-1` | **project:** `codex-bridge`');
+  assert.equal(payload.event_context_line, '**session:** `bridge-1`\n**tmux:** `tmux-1` | **project:** `codex-notify`');
   assert.equal(payload.notification_mode, 'direct');
   assert.match(payload.message_markdown, /# Session Idle/);
   assert.doesNotMatch(payload.message_markdown, /작업 결과가 도착했어/);
   assert.doesNotMatch(payload.message_markdown, /\*\*event:\*\*/);
   assert.match(payload.message_markdown, /abcdef/);
-  assert.equal(payload.project, 'codex-bridge');
+  assert.equal(payload.project, 'codex-notify');
   assert.equal(payload.channel_id, '567890123456789012');
   assert.equal(payload.default_channel_id, null);
   assert.equal(payload.fallback_channel_id, null);
-  assert.equal(payload.desired_channel_name, 'codex-bridge');
+  assert.equal(payload.desired_channel_name, 'codex-notify');
   assert.equal(payload.channel_mapping_status, 'project');
   assert.equal(payload.channel_missing, false);
   assert.equal(payload.auto_create_channel, true);
@@ -166,7 +166,7 @@ test('eventToHermesPayload builds project-routed bridge context without full-log
   assert.equal(payload.session_id, 'bridge-1');
   assert.equal(payload.thread_id, 'thread-1');
   assert.equal(payload.tmux_id, 'tmux-1');
-  assert.equal(payload.session_context_line, '**session:** `bridge-1`\n**tmux:** `tmux-1` | **project:** `codex-bridge`');
+  assert.equal(payload.session_context_line, '**session:** `bridge-1`\n**tmux:** `tmux-1` | **project:** `codex-notify`');
   assert.equal(payload.text_preview, 'abc');
   assert.equal(payload.text_length, 6);
   assert.equal(payload.text_truncated, true);
@@ -183,7 +183,7 @@ test('eventToHermesPayload direct mode embeds FinalAnswer fullText without previ
       codexSessionId: 'thread-1',
       codexThreadId: 'thread-1',
       tmuxId: 'codex-project-123456',
-      project: 'codex-bridge',
+      project: 'codex-notify',
     },
     {
       eventId: 'event-1',
@@ -226,7 +226,7 @@ test('hermesPayloadNotificationChunks splits long direct FinalAnswer payloads at
       lifecycleSessionId: 'codex-visible-1',
       codexSessionId: 'thread-1',
       tmuxId: 'codex-project-123456',
-      project: 'codex-bridge',
+      project: 'codex-notify',
     },
     {
       eventId: 'event-1',
@@ -294,7 +294,7 @@ test('splitNotificationMarkdown preserves markdown fence balance and ordinal mar
 
 test('Hermes subscription prompt keeps FinalAnswer summaries sufficiently detailed', async () => {
   const promptSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
-  const skillSource = await readFile(join(process.cwd(), 'skills', 'hermes-codex-bridge', 'SKILL.md'), 'utf8');
+  const skillSource = await readFile(join(process.cwd(), 'skills', 'hermes-codex-notify', 'SKILL.md'), 'utf8');
   const promptMatch = /cat <<'PROMPT'\n([\s\S]*?)\nPROMPT/.exec(promptSource);
   assert.ok(promptMatch, 'subscription prompt heredoc exists');
 
@@ -341,7 +341,7 @@ test('Hermes subscription prompt keeps FinalAnswer summaries sufficiently detail
 test('Hermes trigger phrases route to helper CLI and bridge read API', async () => {
   const promptSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
   const skillSource = await readFile(join(process.cwd(), 'skills', 'codex-send', 'SKILL.md'), 'utf8');
-  const bridgeSkillSource = await readFile(join(process.cwd(), 'skills', 'hermes-codex-bridge', 'SKILL.md'), 'utf8');
+  const bridgeSkillSource = await readFile(join(process.cwd(), 'skills', 'hermes-codex-notify', 'SKILL.md'), 'utf8');
   const operationsSource = await readFile(join(process.cwd(), 'docs', 'operations.md'), 'utf8');
   const codexNewSource = await readFile(join(process.cwd(), 'skills', 'codex-new', 'SKILL.md'), 'utf8');
   const codexKillSource = await readFile(join(process.cwd(), 'skills', 'codex-kill', 'SKILL.md'), 'utf8');
@@ -423,7 +423,7 @@ test('operations docs identify runtime Hermes rule injection surfaces', async ()
   for (const needle of [
     'scripts/install-hermes-stack.sh',
     '~/.hermes/webhook_subscriptions.json',
-    'skills/hermes-codex-bridge/SKILL.md',
+    'skills/hermes-codex-notify/SKILL.md',
     'src/hermes-webhook-sink.js',
     'src/server.js',
     'Codex-owned lifecycle',
@@ -437,7 +437,7 @@ test('Hermes docs track current repository helper CLI contract', async () => {
     await readFile(join(process.cwd(), 'README.md'), 'utf8'),
     await readFile(join(process.cwd(), 'docs', 'operations.md'), 'utf8'),
     await readFile(join(process.cwd(), 'docs', 'hermes-gateway-integration.md'), 'utf8'),
-    await readFile(join(process.cwd(), 'skills', 'hermes-codex-bridge', 'SKILL.md'), 'utf8'),
+    await readFile(join(process.cwd(), 'skills', 'hermes-codex-notify', 'SKILL.md'), 'utf8'),
     await readFile(join(process.cwd(), 'skills', 'codex-new', 'SKILL.md'), 'utf8'),
     await readFile(join(process.cwd(), 'skills', 'codex-send', 'SKILL.md'), 'utf8'),
     await readFile(join(process.cwd(), 'skills', 'codex-kill', 'SKILL.md'), 'utf8'),
@@ -456,7 +456,7 @@ test('Hermes docs track current repository helper CLI contract', async () => {
 test('Hermes command dispatch rules rely on User Command events and meaning-preserving executable prompt refinement', async () => {
   const promptSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
   const skillSource = await readFile(join(process.cwd(), 'skills', 'codex-send', 'SKILL.md'), 'utf8');
-  const bridgeSkillSource = await readFile(join(process.cwd(), 'skills', 'hermes-codex-bridge', 'SKILL.md'), 'utf8');
+  const bridgeSkillSource = await readFile(join(process.cwd(), 'skills', 'hermes-codex-notify', 'SKILL.md'), 'utf8');
   const operationsSource = await readFile(join(process.cwd(), 'docs', 'operations.md'), 'utf8');
   const quickstartSource = await readFile(join(process.cwd(), 'docs', 'quickstart.md'), 'utf8');
   const integrationSource = await readFile(join(process.cwd(), 'docs', 'hermes-gateway-integration.md'), 'utf8');
@@ -538,7 +538,7 @@ test('Hermes command dispatch rules rely on User Command events and meaning-pres
     assert.match(docSource, /User Command/);
     assert.match(docSource, /FinalAnswer/);
     assert.match(docSource, /FinalAnswer.*\(i\/N\)|\(i\/N\).*FinalAnswer/s);
-    assert.match(docSource, /hermes-codex-bridge,codex-new,codex-send,codex-kill/);
+    assert.match(docSource, /hermes-codex-notify,codex-new,codex-send,codex-kill/);
     assert.match(docSource, /skills\/codex-send\/SKILL\.md/);
   }
 });
@@ -566,8 +566,8 @@ test('codex-send dispatch skill cannot bypass prompt refinement when loaded dire
   assert.match(installerSource, /Codex helper skills/);
   assert.match(installerSource, /for helper_skill in codex-new codex-send codex-kill|install_skill "\$helper_skill"/);
   const stackInstallerSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
-  assert.match(stackInstallerSource, /--skills hermes-codex-bridge,codex-new,codex-send,codex-kill/);
-  assert.match(stackInstallerSource, /skills: \['hermes-codex-bridge', 'codex-new', 'codex-send', 'codex-kill'\]/);
+  assert.match(stackInstallerSource, /--skills hermes-codex-notify,codex-new,codex-send,codex-kill/);
+  assert.match(stackInstallerSource, /skills: \['hermes-codex-notify', 'codex-new', 'codex-send', 'codex-kill'\]/);
 });
 
 test('Hermes prompt separates routing metadata from delivered payload instructions', async () => {
@@ -632,7 +632,7 @@ test('eventToHermesPayload exposes raw user prompts for Hermes', () => {
   ].join('\n');
   const expected = '파일 상태를 확인하고\n```bash\ngit status\n```';
   const payload = eventToHermesPayload(
-    { bridgeSessionId: 'bridge-1', tmuxId: 'tmux-1', project: 'codex-bridge' },
+    { bridgeSessionId: 'bridge-1', tmuxId: 'tmux-1', project: 'codex-notify' },
     {
       eventId: 'prompt-1',
       type: 'CommandSubmitted',
@@ -657,7 +657,7 @@ test('eventToHermesPayload exposes raw user prompts for Hermes', () => {
 test('eventToHermesPayload truncates long User Command notification fields explicitly', () => {
   const prompt = `${'대용량 프롬프트 '.repeat(400)}끝부분`;
   const payload = eventToHermesPayload(
-    { bridgeSessionId: 'bridge-1', tmuxId: 'tmux-1', project: 'codex-bridge' },
+    { bridgeSessionId: 'bridge-1', tmuxId: 'tmux-1', project: 'codex-notify' },
     {
       eventId: 'prompt-long',
       type: 'CommandSubmitted',
@@ -679,7 +679,7 @@ test('eventToHermesPayload truncates long User Command notification fields expli
 
 test('eventToHermesPayload keeps generated event_id bounded for long User Command text', () => {
   const payload = eventToHermesPayload(
-    { bridgeSessionId: 'bridge-1', tmuxId: 'tmux-1', project: 'codex-bridge' },
+    { bridgeSessionId: 'bridge-1', tmuxId: 'tmux-1', project: 'codex-notify' },
     {
       type: 'CommandSubmitted',
       source: 'codex-log',
@@ -696,7 +696,7 @@ test('eventToHermesPayload keeps generated event_id bounded for long User Comman
 test('eventToHermesPayload does not strip subagent notifications from FinalAnswer text', () => {
   const finalAnswer = '<subagent_notification>\n{"agent_path":"019e-example"}\n</subagent_notification>\n최종 답변 본문';
   const payload = eventToHermesPayload(
-    { bridgeSessionId: 'bridge-1', tmuxId: 'tmux-1', project: 'codex-bridge' },
+    { bridgeSessionId: 'bridge-1', tmuxId: 'tmux-1', project: 'codex-notify' },
     {
       eventId: 'final-1',
       type: 'FinalAnswer',
@@ -714,7 +714,7 @@ test('eventToHermesPayload does not strip subagent notifications from FinalAnswe
 
 test('eventToHermesPayload formats SessionEnd duration like Codex notification', () => {
   const payload = eventToHermesPayload(
-    { bridgeSessionId: 'bridge-1', tmuxId: 'tmux-1', project: 'codex-bridge' },
+    { bridgeSessionId: 'bridge-1', tmuxId: 'tmux-1', project: 'codex-notify' },
     {
       eventId: 'end-1',
       type: 'SessionEnd',
@@ -734,8 +734,8 @@ test('eventToHermesPayload formats SessionEnd duration like Codex notification',
 
 test('sessionContextLine falls back to stable session identifiers', () => {
   assert.equal(
-    sessionContextLine({ tmuxPaneId: '%42', bridgeSessionId: 'bridge-1', project: 'hermes-codex-bridge' }),
-    '**session:** `bridge-1`\n**tmux:** `%42` | **project:** `hermes-codex-bridge`',
+    sessionContextLine({ tmuxPaneId: '%42', bridgeSessionId: 'bridge-1', project: 'hermes-codex-notify' }),
+    '**session:** `bridge-1`\n**tmux:** `%42` | **project:** `hermes-codex-notify`',
   );
   assert.equal(
     sessionContextLine({ bridgeSessionId: 'bridge-1' }),
@@ -753,17 +753,17 @@ test('buildHermesWebhookRequest signs payload with GitHub-compatible HMAC header
 });
 
 test('channelForProject prefers project map and falls back to default', () => {
-  const map = { default: 'default-channel', projects: { 'codex-bridge': 'project-channel' } };
-  assert.equal(channelForProject('codex-bridge', map), 'project-channel');
+  const map = { default: 'default-channel', projects: { 'codex-notify': 'project-channel' } };
+  assert.equal(channelForProject('codex-notify', map), 'project-channel');
   assert.equal(channelForProject('missing', map), 'default-channel');
   assert.equal(channelForProject('missing', map, { channelId: 'explicit' }), 'explicit');
 });
 
 test('resolveProjectChannel marks fallback mappings for Hermes auto-create workflow', () => {
-  const map = { default: 'default-channel', projects: { 'codex-bridge': 'project-channel' } };
+  const map = { default: 'default-channel', projects: { 'codex-notify': 'project-channel' } };
   assert.equal(channelNameForProject('Feature/Foo Branch'), 'feature-foo-branch');
 
-  const explicit = resolveProjectChannel('codex-bridge', map);
+  const explicit = resolveProjectChannel('codex-notify', map);
   assert.equal(explicit.channelId, 'project-channel');
   assert.equal(explicit.mappingStatus, 'project');
   assert.equal(explicit.channelMissing, false);
@@ -839,7 +839,7 @@ test('pollHermesWebhookNotifications is a no-op without Hermes webhook URL', asy
 });
 
 test('pollHermesWebhookNotifications ignores unmapped Codex fallback logs by default', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-unmapped-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-unmapped-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '04');
   const statePath = join(root, 'state.json');
@@ -870,7 +870,7 @@ test('pollHermesWebhookNotifications ignores unmapped Codex fallback logs by def
 });
 
 test('pollHermesWebhookNotifications leaves fast user prompt events out of default Hermes delivery', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-prompt-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-prompt-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '06');
   const statePath = join(root, 'state.json');
@@ -909,7 +909,7 @@ test('pollHermesWebhookNotifications leaves fast user prompt events out of defau
 
 
 test('pollHermesWebhookNotifications keeps FinalAnswer delivery queued before a later user command', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-stale-final-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-stale-final-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '06');
   const statePath = join(root, 'state.json');
@@ -969,7 +969,7 @@ test('pollHermesWebhookNotifications keeps FinalAnswer delivery queued before a 
 });
 
 test('pollHermesWebhookNotifications delivers near-simultaneous FinalAnswer before following user command', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-near-simultaneous-final-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-near-simultaneous-final-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '06');
   const statePath = join(root, 'state.json');
@@ -1027,7 +1027,7 @@ test('pollHermesWebhookNotifications delivers near-simultaneous FinalAnswer befo
 });
 
 test('pollHermesWebhookNotifications does not let command-only flush consume an unsent FinalAnswer cursor', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-command-cursor-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-command-cursor-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '06');
   const statePath = join(root, 'state.json');
@@ -1109,7 +1109,7 @@ test('pollHermesWebhookNotifications does not let command-only flush consume an 
 });
 
 test.skip('pollHermesWebhookNotifications attaches Codex log to Codex lifecycle when native id is missing', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-cwd-attach-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-cwd-attach-'));
   const projectRoot = join(root, 'docs');
   const runRoot = join(root, 'run-20260508-docs');
   const codexHome = join(root, 'codex-home');
@@ -1165,7 +1165,7 @@ test.skip('pollHermesWebhookNotifications attaches Codex log to Codex lifecycle 
 });
 
 test.skip('pollHermesWebhookNotifications scans configured extra Codex project roots for SessionStart', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-'));
   const docsRoot = join(root, 'docs');
   const statePath = join(root, 'state.json');
   await mkdir(join(docsRoot, '.codex', 'logs'), { recursive: true });
@@ -1208,7 +1208,7 @@ test.skip('pollHermesWebhookNotifications scans configured extra Codex project r
 });
 
 test('pollHermesWebhookNotifications does not resend non-active SessionStart after Codex slash command remaps native id', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-remapped-start-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-remapped-start-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const startedAt = new Date(Date.now() - 1000).toISOString();
@@ -1231,7 +1231,7 @@ test('pollHermesWebhookNotifications does not resend non-active SessionStart aft
         codexThreadId: 'codex-old-thread',
         codexSessionId: 'codex-old-thread',
         lifecycleSessionId: 'codex-visible',
-        project: 'codex-bridge',
+        project: 'codex-notify',
       },
       event: {
         eventId: 'codex-visible:start',
@@ -1287,7 +1287,7 @@ test('pollHermesWebhookNotifications does not resend non-active SessionStart aft
 });
 
 test('pollHermesWebhookNotifications sends pending lifecycle events in global timestamp order', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-order-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-order-'));
   const statePath = join(root, 'state.json');
   await mkdir(join(root, '.codex', 'logs'), { recursive: true });
   await mkdir(join(root, 'codex-home', 'sessions'), { recursive: true });
@@ -1334,7 +1334,7 @@ test('pollHermesWebhookNotifications sends pending lifecycle events in global ti
 
 
 test.skip('pollHermesWebhookNotifications delivers notification lifecycle events for auxiliary Codex-owned logs', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-aux-life-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-aux-life-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const index = await openEventIndex(root, { eventIndexPath });
@@ -1389,7 +1389,7 @@ test.skip('pollHermesWebhookNotifications delivers notification lifecycle events
 });
 
 test.skip('pollHermesWebhookNotifications auto maps an existing Discord project channel before fallback delivery', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-autochannel-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-autochannel-'));
   const docsRoot = join(root, 'docs');
   const statePath = join(root, 'state.json');
   const mapPath = join(root, 'project-channels.json');
@@ -1450,7 +1450,7 @@ test.skip('pollHermesWebhookNotifications auto maps an existing Discord project 
 });
 
 test('pollHermesWebhookNotifications does not create missing threads for late FinalAnswer events', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-thread-direct-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-thread-direct-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions');
   const statePath = join(root, 'state.json');
@@ -1538,7 +1538,7 @@ test('pollHermesWebhookNotifications does not create missing threads for late Fi
 });
 
 test('pollHermesWebhookNotifications bootstraps newly discovered codex logs without backfilling old FinalAnswers', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-cursor-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-cursor-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions');
   const statePath = join(root, 'state.json');
@@ -1595,7 +1595,7 @@ test('pollHermesWebhookNotifications bootstraps newly discovered codex logs with
 });
 
 test('pollHermesWebhookNotifications spools long FinalAnswer bodies outside SQLite and hydrates them for delivery', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-body-spool-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-body-spool-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions');
   const statePath = join(root, 'state.json');
@@ -1652,7 +1652,7 @@ test('pollHermesWebhookNotifications spools long FinalAnswer bodies outside SQLi
 });
 
 test('pollHermesWebhookNotifications ignores codex explore codex exec completion logs', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-explore-aux-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-explore-aux-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '19');
   const statePath = join(root, 'state.json');
@@ -1701,7 +1701,7 @@ test('pollHermesWebhookNotifications ignores codex explore codex exec completion
 });
 
 test('pollHermesWebhookNotifications suppresses legacy pending codex explore completion events', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-legacy-explore-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-legacy-explore-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '19');
   const statePath = join(root, 'state.json');
@@ -1774,7 +1774,7 @@ test('pollHermesWebhookNotifications suppresses legacy pending codex explore com
 });
 
 test('pollHermesWebhookNotifications includes bridge command target Codex logs after native remap', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-command-target-log-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-command-target-log-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions');
   const statePath = join(root, 'state.json');
@@ -1841,7 +1841,7 @@ test('pollHermesWebhookNotifications includes bridge command target Codex logs a
 });
 
 test('pollHermesWebhookNotifications posts long direct FinalAnswer chunks sequentially to the same target', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-direct-chunks-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-direct-chunks-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '12');
   const statePath = join(root, 'state.json');
@@ -1912,7 +1912,7 @@ test('pollHermesWebhookNotifications posts long direct FinalAnswer chunks sequen
 });
 
 test('pollHermesWebhookNotifications retargets stale resumed FinalAnswer to the current Codex session thread', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-resume-current-thread-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-resume-current-thread-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const mapPath = join(root, 'project-channels.json');
@@ -2016,7 +2016,7 @@ test('pollHermesWebhookNotifications retargets stale resumed FinalAnswer to the 
 });
 
 test('pollHermesWebhookNotifications posts short direct FinalAnswer directly to the session thread', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-direct-short-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-direct-short-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '22');
   const statePath = join(root, 'state.json');
@@ -2078,7 +2078,7 @@ test('pollHermesWebhookNotifications posts short direct FinalAnswer directly to 
 });
 
 test('pollHermesWebhookNotifications keeps retryable Hermes gateway failures queued', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-gateway-retry-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-gateway-retry-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '22');
   const statePath = join(root, 'state.json');
@@ -2170,7 +2170,7 @@ test('pollHermesWebhookNotifications keeps retryable Hermes gateway failures que
 });
 
 test('pollHermesWebhookNotifications marks permanent Hermes HTTP failures dead', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-gateway-permanent-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-gateway-permanent-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '05', '22');
   const statePath = join(root, 'state.json');
@@ -2225,7 +2225,7 @@ test('pollHermesWebhookNotifications marks permanent Hermes HTTP failures dead',
 });
 
 test('pollHermesWebhookNotifications does not fall back to project channel for unmapped SessionEnd', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-end-project-channel-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-end-project-channel-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   const mapPath = join(root, 'project-channels.json');
@@ -2317,7 +2317,7 @@ test('pollHermesWebhookNotifications does not fall back to project channel for u
 });
 
 test.skip('pollHermesWebhookNotifications auto creates and maps a missing Discord project channel', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-createchannel-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-createchannel-'));
   const docsRoot = join(root, 'docs');
   const statePath = join(root, 'state.json');
   const mapPath = join(root, 'project-channels.json');
@@ -2403,7 +2403,7 @@ test.skip('pollHermesWebhookNotifications auto creates and maps a missing Discor
 });
 
 test.skip('pollHermesWebhookNotifications repairs Hermes allowlist for an already mapped project channel', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-repairallow-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-repairallow-'));
   const docsRoot = join(root, 'docs');
   const statePath = join(root, 'state.json');
   const mapPath = join(root, 'project-channels.json');
@@ -2459,7 +2459,7 @@ test.skip('pollHermesWebhookNotifications repairs Hermes allowlist for an alread
 });
 
 test('pollHermesWebhookNotifications suppresses Codex team worker session notifications', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-teamworker-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-teamworker-'));
   const projectRoot = join(root, 'chiz-crab');
   const workerRoot = join(projectRoot, '.codex', 'team', 'extractor-safety', 'worktrees', 'worker-1');
   const statePath = join(root, 'state.json');
@@ -2503,7 +2503,7 @@ test('pollHermesWebhookNotifications suppresses Codex team worker session notifi
 });
 
 test('pollHermesWebhookNotifications drops stale native-only lifecycle pollution before sending valid pending events', async () => {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-hermes-stale-native-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-hermes-stale-native-'));
   const statePath = join(root, 'state.json');
   const eventIndexPath = join(root, 'events.sqlite');
   await mkdir(join(root, '.codex', 'logs'), { recursive: true });
@@ -2532,7 +2532,7 @@ test('pollHermesWebhookNotifications drops stale native-only lifecycle pollution
           bridgeSessionId: 'codex-visible',
           lifecycleSessionId: 'owned-visible',
           codexSessionId: 'codex-visible',
-          project: 'codex-bridge',
+          project: 'codex-notify',
           hasBridgeLifecycle: true,
           lifecycleOwner: 'codex',
         },

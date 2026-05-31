@@ -2,15 +2,15 @@
 
 **English** | [한국어](bridge-hermes-only-install-ko.md)
 
-Use this runbook when a new PC or Hermes Agent should install only `hermes-codex-bridge` plus Hermes/Discord notification integration.
+Use this runbook when a new PC or Hermes Agent should install only `hermes-codex-notify` plus Hermes/Discord notification integration.
 
 ## Goal
 
 The install is complete when only the following are working:
 
-1. The `hermes-codex-bridge` server runs on `127.0.0.1:3037` as a systemd user service.
-2. Hermes has the `hermes-codex-bridge`, `codex-new`, `codex-send`, and `codex-kill` skills installed.
-3. The Hermes Gateway webhook subscription `codex-bridge` receives `AskPermission,FinalAnswer` events.
+1. The `hermes-codex-notify` server runs on `127.0.0.1:3037` as a systemd user service.
+2. Hermes has the `hermes-codex-notify`, `codex-new`, `codex-send`, and `codex-kill` skills installed.
+3. The Hermes Gateway webhook subscription `codex-notify` receives `AskPermission,FinalAnswer` events.
 4. Notifications reach a Discord project channel or session thread.
 5. The `codex-new`, `codex-send`, and `codex-kill` helper CLIs are on `PATH`.
 
@@ -37,7 +37,7 @@ Required:
 
 Recommended:
 
-- Per-project Discord channel mapping, for example `hermes-codex-bridge=345678901234567890`.
+- Per-project Discord channel mapping, for example `hermes-codex-notify=345678901234567890`.
 - Discord user IDs to mention on `SessionStart`, for example `456789012345678901`.
 
 Optional:
@@ -70,8 +70,8 @@ Gateway env locations vary by install. The agent should ask the operator for the
 ## Clone and verify
 
 ```bash
-git clone https://github.com/chiznoir/hermes-codex-bridge.git
-cd hermes-codex-bridge
+git clone https://github.com/chiznoir/hermes-codex-notify.git
+cd hermes-codex-notify
 npm install
 npm test
 ```
@@ -104,7 +104,7 @@ scripts/install-hermes-stack.sh \
   --direct \
   --threads \
   --channel <fallback-discord-channel-id> \
-  --project hermes-codex-bridge=<project-channel-id> \
+  --project hermes-codex-notify=<project-channel-id> \
   --project other-project=<other-project-channel-id> \
   --bot-token '<discord-bot-token>' \
   --guild <discord-guild-or-server-id> \
@@ -114,9 +114,9 @@ scripts/install-hermes-stack.sh \
 If the bridge stays on the same host at `127.0.0.1`, the bridge bearer token can be empty. If it is exposed through Docker, LAN, a reverse proxy, or public access, create a token file and add `--token-file`.
 
 ```bash
-mkdir -p ~/.config/hermes-codex-bridge
-openssl rand -hex 32 > ~/.config/hermes-codex-bridge/bridge.token
-chmod 600 ~/.config/hermes-codex-bridge/bridge.token
+mkdir -p ~/.config/hermes-codex-notify
+openssl rand -hex 32 > ~/.config/hermes-codex-notify/bridge.token
+chmod 600 ~/.config/hermes-codex-notify/bridge.token
 
 scripts/install-hermes-stack.sh \
   --webhook \
@@ -129,7 +129,7 @@ scripts/install-hermes-stack.sh \
   --bot-token '<discord-bot-token>' \
   --guild <discord-guild-or-server-id> \
   --mention-users <discord-user-id> \
-  --token-file ~/.config/hermes-codex-bridge/bridge.token
+  --token-file ~/.config/hermes-codex-notify/bridge.token
 ```
 
 ## Bridge-only mode where Hermes queries the API directly
@@ -148,29 +148,29 @@ In this mode, `FinalAnswer` / `AskPermission` automatic notifications will not b
 ~/.local/bin/codex-new
 ~/.local/bin/codex-send
 ~/.local/bin/codex-kill
-~/.hermes/skills/autonomous-ai-agents/hermes-codex-bridge/SKILL.md
+~/.hermes/skills/autonomous-ai-agents/hermes-codex-notify/SKILL.md
 ~/.hermes/skills/autonomous-ai-agents/codex-new/SKILL.md
 ~/.hermes/skills/autonomous-ai-agents/codex-send/SKILL.md
 ~/.hermes/skills/autonomous-ai-agents/codex-kill/SKILL.md
-~/.config/systemd/user/hermes-codex-bridge.service
-~/.config/hermes-codex-bridge/hermes-codex-bridge.env
-~/.config/hermes-codex-bridge/hermes-webhook.secret
-~/.config/hermes-codex-bridge/project-channels.json
+~/.config/systemd/user/hermes-codex-notify.service
+~/.config/hermes-codex-notify/hermes-codex-notify.env
+~/.config/hermes-codex-notify/hermes-webhook.secret
+~/.config/hermes-codex-notify/project-channels.json
 ~/.hermes/webhook_subscriptions.json
 ```
 
 ## Verify
 
 ```bash
-systemctl --user is-active hermes-codex-bridge.service
-systemctl --user status hermes-codex-bridge.service --no-pager
+systemctl --user is-active hermes-codex-notify.service
+systemctl --user status hermes-codex-notify.service --no-pager
 curl -fsS http://127.0.0.1:3037/health | jq .
 
 systemctl --user is-active hermes-gateway.service
 curl -fsS http://127.0.0.1:8644/health | jq .
 
 command -v codex-new codex-send codex-kill
-hermes skills list | grep 'hermes-codex-bridge'
+hermes skills list | grep 'hermes-codex-notify'
 ```
 
 Also verify that the webhook subscription prompt is current. `FinalAnswer` remains the internal event type, but the user-facing title should be `Session Idle`.
@@ -180,12 +180,12 @@ python - <<'PY'
 import json, os
 p = os.path.expanduser('~/.hermes/webhook_subscriptions.json')
 data = json.load(open(p))
-sub = data.get('codex-bridge') or data.get('subscriptions', {}).get('codex-bridge')
+sub = data.get('codex-notify') or data.get('subscriptions', {}).get('codex-notify')
 prompt = sub.get('prompt', '') if sub else ''
 assert sub and sub.get('events') == ['AskPermission', 'FinalAnswer']
 assert '제목 `Final Answer`' not in prompt
 assert 'Session Idle' in prompt
-print('ok: codex-bridge subscription prompt is current')
+print('ok: codex-notify subscription prompt is current')
 PY
 ```
 

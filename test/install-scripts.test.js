@@ -9,7 +9,7 @@ import { join } from 'node:path';
 const execFile = promisify(execFileCallback);
 
 async function tempEnv() {
-  const home = await mkdtemp(join(tmpdir(), 'hermes-codex-bridge-install-'));
+  const home = await mkdtemp(join(tmpdir(), 'hermes-codex-notify-install-'));
   return {
     ...process.env,
     HOME: home,
@@ -197,7 +197,7 @@ test('apply-runtime can target a system service and skip health checks', async (
   assert.match(stdout, /scope: system/);
   assert.match(stdout, /health: skipped/);
   assert.match(stdout, /\+ systemctl daemon-reload/);
-  assert.match(stdout, /\+ systemctl restart hermes-codex-bridge\.service/);
+  assert.match(stdout, /\+ systemctl restart hermes-codex-notify\.service/);
   assert.doesNotMatch(stdout, /\+ curl/);
 });
 
@@ -215,7 +215,7 @@ test('install-hermes-stack defaults to Hermes agent bridge without webhook sink'
   assert.match(stdout, /--force/);
   assert.match(stdout, /Mode: Hermes agent bridge/);
   assert.match(stdout, /Helper CLIs:/);
-  assert.match(stdout, /remove Hermes webhook subscription codex-bridge/);
+  assert.match(stdout, /remove Hermes webhook subscription codex-notify/);
   assert.doesNotMatch(stdout, /--sink(?:\s|$)/);
   assert.doesNotMatch(stdout, /install\/update Hermes webhook subscription/);
 });
@@ -233,7 +233,7 @@ test('install-hermes-stack only enables webhook sink when explicitly requested',
   ], { env, maxBuffer: 1024 * 1024 });
 
   assert.match(stdout, /--sink(?:\s|$)/);
-  assert.match(stdout, /install\/update Hermes webhook subscription codex-bridge/);
+  assert.match(stdout, /install\/update Hermes webhook subscription codex-notify/);
   assert.match(stdout, /Mode: Hermes webhook sink/);
 });
 

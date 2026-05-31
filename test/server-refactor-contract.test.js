@@ -101,7 +101,7 @@ test('event-index schema and delivery transition columns stay contract-frozen', 
     assert.deepEqual(columnNames('codex_log_cursors'), ['log_path', 'codex_session_id', 'last_line', 'first_seen_at', 'updated_at']);
 
     const event = { eventId: 'event-1', type: 'CommandSubmitted', source: 'codex-log', timestamp: '2026-05-06T08:00:00.000Z', text: 'hello' };
-    const session = { bridgeSessionId: 'bridge-1', project: 'codex-bridge', lifecycleSessionId: 'codex-1' };
+    const session = { bridgeSessionId: 'bridge-1', project: 'codex-notify', lifecycleSessionId: 'codex-1' };
     upsertEvents(db, [{ eventId: 'event-1', event, session }]);
     markDeliveryPrepared(db, 'event-1', 'contract-sink', { chunks: ['hello'] }, {
       targetChannelId: 'channel-1',

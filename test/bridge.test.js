@@ -7,7 +7,7 @@ import { createCommandNotificationFlusher, createServer, resolveRuntimeProjectRo
 import { appendApprovalDecision } from '../src/codex-send-approvals.js';
 
 async function fixture() {
-  const root = await mkdtemp(join(tmpdir(), 'codex-bridge-'));
+  const root = await mkdtemp(join(tmpdir(), 'codex-notify-'));
   const codexHome = join(root, 'codex-home');
   const sessionsDir = join(codexHome, 'sessions', '2026', '04', '28');
   await mkdir(sessionsDir, { recursive: true });

@@ -317,7 +317,7 @@ test('event index compacts by high-water/low-water without deleting failed deliv
   const root = await mkdtemp(join(tmpdir(), 'codex-event-index-'));
   const index = await openEventIndex(root, { eventIndexPath: join(root, 'state', 'events.sqlite') });
   try {
-    const session = { bridgeSessionId: 'bridge-1', project: 'codex-bridge' };
+    const session = { bridgeSessionId: 'bridge-1', project: 'codex-notify' };
     const items = Array.from({ length: 7 }, (_, index) => ({
       session,
       eventId: `event-${index + 1}`,
@@ -359,7 +359,7 @@ test('pendingEvents returns only the older due retry before newer same-session e
   const root = await mkdtemp(join(tmpdir(), 'codex-event-index-pending-priority-'));
   const index = await openEventIndex(root, { eventIndexPath: join(root, 'state', 'events.sqlite') });
   try {
-    const session = { bridgeSessionId: 'bridge-1', project: 'codex-bridge' };
+    const session = { bridgeSessionId: 'bridge-1', project: 'codex-notify' };
     upsertEvents(index.db, [
       {
         session,
@@ -405,7 +405,7 @@ test('pendingEvents holds newer cross-session events behind an older unresolved 
   try {
     upsertEvents(index.db, [
       {
-        session: { bridgeSessionId: 'bridge-old', project: 'codex-bridge' },
+        session: { bridgeSessionId: 'bridge-old', project: 'codex-notify' },
         event: {
           eventId: 'old-session-failed',
           type: 'CommandSubmitted',
@@ -415,7 +415,7 @@ test('pendingEvents holds newer cross-session events behind an older unresolved 
         },
       },
       {
-        session: { bridgeSessionId: 'bridge-new', project: 'codex-bridge' },
+        session: { bridgeSessionId: 'bridge-new', project: 'codex-notify' },
         event: {
           eventId: 'new-session-pending',
           type: 'CommandSubmitted',
@@ -446,7 +446,7 @@ test('pendingEvents holds newer same-session events while an older retry is unre
   const root = await mkdtemp(join(tmpdir(), 'codex-event-index-retry-hold-'));
   const index = await openEventIndex(root, { eventIndexPath: join(root, 'state', 'events.sqlite') });
   try {
-    const session = { bridgeSessionId: 'bridge-hold', project: 'codex-bridge' };
+    const session = { bridgeSessionId: 'bridge-hold', project: 'codex-notify' };
     upsertEvents(index.db, [
       {
         session,
@@ -515,7 +515,7 @@ test('pendingEvents can hold fast commands behind prior final-answer delivery', 
   const root = await mkdtemp(join(tmpdir(), 'codex-event-index-prior-delivery-block-'));
   const index = await openEventIndex(root, { eventIndexPath: join(root, 'state', 'events.sqlite') });
   try {
-    const session = { bridgeSessionId: 'bridge-queue', project: 'codex-bridge' };
+    const session = { bridgeSessionId: 'bridge-queue', project: 'codex-notify' };
     upsertEvents(index.db, [
       {
         session,
@@ -578,7 +578,7 @@ test('pendingEvents keeps delayed prior delivery errors observable before releas
   const root = await mkdtemp(join(tmpdir(), 'codex-event-index-prior-delivery-error-'));
   const index = await openEventIndex(root, { eventIndexPath: join(root, 'state', 'events.sqlite') });
   try {
-    const session = { bridgeSessionId: 'bridge-queue', project: 'codex-bridge' };
+    const session = { bridgeSessionId: 'bridge-queue', project: 'codex-notify' };
     upsertEvents(index.db, [
       {
         session,
@@ -652,7 +652,7 @@ test('pendingEvents only grace-holds missing prior delivery rows briefly', async
   const root = await mkdtemp(join(tmpdir(), 'codex-event-index-prior-delivery-grace-'));
   const index = await openEventIndex(root, { eventIndexPath: join(root, 'state', 'events.sqlite') });
   try {
-    const session = { bridgeSessionId: 'bridge-queue', project: 'codex-bridge' };
+    const session = { bridgeSessionId: 'bridge-queue', project: 'codex-notify' };
     upsertEvents(index.db, [
       {
         session,
@@ -714,7 +714,7 @@ test('markSkippedBeforeDeliveries makes boot-cutoff skips observable and non-pen
       bridgeSessionId: 'codex-cutoff',
       codexSessionId: 'codex-cutoff',
       lifecycleSessionId: 'codex-cutoff',
-      project: 'codex-bridge',
+      project: 'codex-notify',
       status: 'active',
     };
     upsertEvents(index.db, [
@@ -772,7 +772,7 @@ test('failed deliveries stay durable but wait until next_attempt_at before retry
   const index = await openEventIndex(root, { eventIndexPath: join(root, 'state', 'events.sqlite') });
   try {
     upsertEvents(index.db, [{
-      session: { bridgeSessionId: 'bridge-1', project: 'codex-bridge' },
+      session: { bridgeSessionId: 'bridge-1', project: 'codex-notify' },
       event: {
         eventId: 'retry-me',
         type: 'FinalAnswer',
@@ -825,7 +825,7 @@ test('failed deliveries stop retrying after max attempts and compact after expir
   const index = await openEventIndex(root, { eventIndexPath: join(root, 'state', 'events.sqlite') });
   try {
     upsertEvents(index.db, [{
-      session: { bridgeSessionId: 'bridge-dead', project: 'codex-bridge' },
+      session: { bridgeSessionId: 'bridge-dead', project: 'codex-notify' },
       event: {
         eventId: 'retry-dead',
         type: 'FinalAnswer',
@@ -896,7 +896,7 @@ test('event index compaction preserves undelivered pending events', async () => 
   try {
     upsertEvents(index.db, [
       {
-        session: { bridgeSessionId: 'pending-old', project: 'codex-bridge' },
+        session: { bridgeSessionId: 'pending-old', project: 'codex-notify' },
         event: {
           eventId: 'pending-old:answer',
           type: 'FinalAnswer',
@@ -907,7 +907,7 @@ test('event index compaction preserves undelivered pending events', async () => 
         },
       },
       {
-        session: { bridgeSessionId: 'sent-old', project: 'codex-bridge' },
+        session: { bridgeSessionId: 'sent-old', project: 'codex-notify' },
         event: {
           eventId: 'sent-old:answer',
           type: 'FinalAnswer',
@@ -995,7 +995,7 @@ test('event index emits SessionLinked instead of resending SessionStart when Cod
         codexThreadId: 'codex-old-thread',
         codexSessionId: 'codex-old-thread',
         lifecycleSessionId: 'codex-visible',
-        project: 'codex-bridge',
+        project: 'codex-notify',
         status: 'active',
       },
       event,
@@ -1012,7 +1012,7 @@ test('event index emits SessionLinked instead of resending SessionStart when Cod
         codexThreadId: 'codex-new-thread',
         codexSessionId: 'codex-new-thread',
         lifecycleSessionId: 'codex-visible',
-        project: 'codex-bridge',
+        project: 'codex-notify',
         status: 'active',
       },
       event,
@@ -1209,7 +1209,7 @@ test('event index emits SessionLinked when /resume claims a Codex id after place
         codexThreadId: 'codex-current-thread',
         codexSessionId: 'codex-current-thread',
         lifecycleSessionId: 'codex-current-thread',
-        project: 'codex-bridge',
+        project: 'codex-notify',
         status: 'active',
       },
       event,
@@ -1224,7 +1224,7 @@ test('event index emits SessionLinked when /resume claims a Codex id after place
         lifecycleSessionId: 'codex-current-thread',
         runtimeBridgeSessionId: 'codex-old-ended-thread',
         resumedCodexSession: true,
-        project: 'codex-bridge',
+        project: 'codex-notify',
         status: 'active',
       },
       event,
@@ -1256,7 +1256,7 @@ test('event index emits only one SessionLinked when active Codex mapping flaps r
       codexThreadId: codexSessionId,
       codexSessionId,
       lifecycleSessionId: 'codex-visible',
-      project: 'codex-bridge',
+      project: 'codex-notify',
       status: 'active',
     });
 
@@ -1347,7 +1347,7 @@ test('event index does not emit SessionLinked for non-active remaps', async () =
         bridgeSessionId: 'codex-old-thread',
         codexSessionId: 'codex-old-thread',
         lifecycleSessionId: 'codex-ended',
-        project: 'codex-bridge',
+        project: 'codex-notify',
         status: 'ended',
       },
       event,
@@ -1359,7 +1359,7 @@ test('event index does not emit SessionLinked for non-active remaps', async () =
         bridgeSessionId: 'codex-new-thread',
         codexSessionId: 'codex-new-thread',
         lifecycleSessionId: 'codex-ended',
-        project: 'codex-bridge',
+        project: 'codex-notify',
         status: 'ended',
       },
       event,
@@ -1394,7 +1394,7 @@ test('pendingEvents includes remapped SessionLinked after skipBefore without rep
         bridgeSessionId: 'codex-old-unsent',
         codexSessionId: 'codex-old-unsent',
         lifecycleSessionId: 'codex-old-unsent',
-        project: 'codex-bridge',
+        project: 'codex-notify',
       },
       event: oldEvent,
     }]);
@@ -1408,7 +1408,7 @@ test('pendingEvents includes remapped SessionLinked after skipBefore without rep
         bridgeSessionId: 'codex-before-new',
         codexSessionId: 'codex-before-new',
         lifecycleSessionId: 'codex-remapped',
-        project: 'codex-bridge',
+        project: 'codex-notify',
       },
       event: remappedEvent,
     }]);
@@ -1429,7 +1429,7 @@ test('pendingEvents includes remapped SessionLinked after skipBefore without rep
         codexThreadId: 'codex-after-new',
         codexSessionId: 'codex-after-new',
         lifecycleSessionId: 'codex-remapped',
-        project: 'codex-bridge',
+        project: 'codex-notify',
         status: 'active',
       },
       event: remappedEvent,
@@ -1472,7 +1472,7 @@ test('pendingEvents includes active remapped SessionStart for a new sink without
         bridgeSessionId: 'codex-active-not-remapped',
         codexSessionId: 'codex-active-not-remapped',
         lifecycleSessionId: 'codex-active-not-remapped',
-        project: 'codex-bridge',
+        project: 'codex-notify',
         status: 'active',
       },
       event: oldEvent,
@@ -1491,7 +1491,7 @@ test('pendingEvents includes active remapped SessionStart for a new sink without
         codexThreadId: 'codex-after-new',
         codexSessionId: 'codex-after-new',
         lifecycleSessionId: 'codex-active-remapped',
-        project: 'codex-bridge',
+        project: 'codex-notify',
         status: 'active',
       },
       event: remappedEvent,
