@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_name="$(basename "$0")"
+bridge_url="${OMX_BRIDGE_URL:-http://127.0.0.1:3037}"
+token="${OMX_BRIDGE_TOKEN:-}"
+session_id=""
+project=""
+mode="auto"
+dry_run=0
+submit=1
+normalize=1
+approval_gate=""
+approval_answer=""
+question_id=""
+edit_text=""
+list_only=0
+command_text=""
+session_list_limit="${OMX_SEND_SESSION_LIST_LIMIT:-50}"
+
+usage() {
+  cat <<'USAGE'
+사용법:
+  omx-send --session SESSION_ID [--mode auto|tmux|codex] [--dry] [--hold] [--raw] PROMPT
+  omx-send --session SESSION_ID --discord-approval PROMPT
+  omx-send --session SESSION_ID --answer-approval send|reject --question-id QUESTION_ID
+  omx-send --session SESSION_ID --answer-approval modify --question-id QUESTION_ID --edit TEXT
+  omx-send --project PROJECT PROMPT
+  omx-send --list
+
+--list 출력 컬럼:
+  bridgeSessionId, project, activityState, status, tmuxId, lastEventAt
+
+설명:
+  hermes-omx-bridge HTTP API로 OMX/Codex 세션에 지시를 보냅니다.
+  기본 mode는 auto이며, live tmux 화면에 반드시 보여야 하면 --mode tmux를 사용합니다.
+  기본적으로 Hermes/operator wrapper와 전달 prefix를 제거합니다.
+  byte-for-byte에 가까운 전달이 필요할 때만 --raw/--no-normalize를 사용합니다.
+  Discord Hermes에서 전송 전 승인 UI가 필요하면 --discord-approval을 사용합니다.
+  승인 UI 응답은 --answer-approval로 /question-answers에 제출합니다.
+
+환경변수:
+  OMX_BRIDGE_URL    기본 http://127.0.0.1:3037
+  OMX_BRIDGE_TOKEN  설정된 경우 Authorization Bearer로 전송
+  OMX_SEND_SESSION_LIST_LIMIT  --list/--project 세션 조회 제한 (기본 50, all 허용)
+
+옵션:
+  --url URL      bridge URL 변경
+  --token TOKEN  Authorization Bearer token
+  --limit N      --list/--project 세션 조회 제한
+  --approval-gate GATE  승인 gate 지정 (지원: discord-hermes-omx-send)
+  --discord-approval    --approval-gate discord-hermes-omx-send 축약형
+  --answer-approval ACTION  승인 응답 제출: send|reject|modify
+  --question-id ID          승인 question id
+  --edit TEXT               modify 응답의 추가수정 텍스트
+USAGE
+}
+
+die() { printf '❌ %s\n' "$*" >&2; exit 1; }
+trap 'rc=$?; printf "❌ 실패: line=%s exit=%s\n" "$LINENO" "$rc" >&2; exit "$rc"' ERR
+require_cmd() { command -v "$1" >/dev/null 2>&1 || die "필요한 명령어를 찾을 수 없습니다: $1"; }
+
+auth_args=()
+if [[ -n "$token" ]]; then
+  auth_args=(-H "Authorization: Bearer $token")
+fi
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    --url|--bridge-url) [[ $# -ge 2 ]] || die "$1 뒤에 URL이 필요합니다"; bridge_url="$2"; shift 2 ;;
+    --token) [[ $# -ge 2 ]] || die "--token 뒤에 token이 필요합니다"; token="$2"; auth_args=(-H "Authorization: Bearer $token"); shift 2 ;;
+    --session|-s) [[ $# -ge 2 ]] || die "--session 뒤에 id가 필요합니다"; session_id="$2"; shift 2 ;;
+    --project|-p) [[ $# -ge 2 ]] || die "--project 뒤에 프로젝트명이 필요합니다"; project="$2"; shift 2 ;;
+    --mode|-m) [[ $# -ge 2 ]] || die "--mode 뒤에 값이 필요합니다"; mode="$2"; shift 2 ;;
+    --dry|--dry-run) dry_run=1; shift ;;
+    --hold|--no-submit) submit=0; shift ;;
+    --raw|--no-normalize|--preserve-raw) normalize=0; shift ;;
+    --normalize) normalize=1; shift ;;
+    --approval-gate) [[ $# -ge 2 ]] || die "--approval-gate 뒤에 값이 필요합니다"; approval_gate="$2"; shift 2 ;;
+    --discord-approval) approval_gate="discord-hermes-omx-send"; shift ;;
+    --answer-approval|--approval-answer) [[ $# -ge 2 ]] || die "$1 뒤에 send|reject|modify 값이 필요합니다"; approval_answer="$2"; shift 2 ;;
+    --question-id) [[ $# -ge 2 ]] || die "--question-id 뒤에 id가 필요합니다"; question_id="$2"; shift 2 ;;
+    --edit|--other-text) [[ $# -ge 2 ]] || die "$1 뒤에 추가수정 텍스트가 필요합니다"; edit_text="$2"; shift 2 ;;
+    --list) list_only=1; shift ;;
+    --limit) [[ $# -ge 2 ]] || die "--limit 뒤에 값이 필요합니다"; session_list_limit="$2"; shift 2 ;;
+    --) shift; command_text="$*"; break ;;
+    -*) die "알 수 없는 옵션: $1" ;;
+    *) command_text="${command_text:+$command_text }$1"; shift ;;
+  esac
+done
+
+require_cmd curl
+require_cmd jq
+[[ "$mode" =~ ^(auto|tmux|codex)$ ]] || die "mode는 auto|tmux|codex 중 하나여야 합니다"
+if [[ -n "$approval_gate" && "$approval_gate" != "discord-hermes-omx-send" ]]; then
+  die "approval gate는 discord-hermes-omx-send만 지원합니다"
+fi
+if [[ -n "$approval_answer" && ! "$approval_answer" =~ ^(send|reject|modify)$ ]]; then
+  die "--answer-approval은 send|reject|modify 중 하나여야 합니다"
+fi
+
+if [[ "$list_only" -eq 1 ]]; then
+  sessions_json="$(curl -fsS "${auth_args[@]}" "$bridge_url/sessions?activity=false&limit=$session_list_limit")"
+  jq -r '.sessions[] | [.bridgeSessionId, .project, (.activityState // .activity.state // "unknown"), .status, (.tmuxId // ""), (.lastEventAt // .startedAt // "")] | @tsv' <<<"$sessions_json"
+  exit 0
+fi
+
+if [[ -z "$session_id" ]]; then
+  if [[ -z "$project" ]]; then
+    die "--session 또는 --project가 필요합니다"
+  fi
+  sessions_json="$(curl -fsS "${auth_args[@]}" "$bridge_url/sessions?activity=false&limit=$session_list_limit")"
+  session_id="$(jq -r --arg project "$project" '[.sessions[] | select(.project==$project and .status!="ended")] | sort_by(.lastEventAt // .startedAt // "") | reverse | .[0].bridgeSessionId // empty' <<<"$sessions_json")"
+  [[ -n "$session_id" ]] || die "활성 bridge session을 찾지 못했습니다: project=$project"
+fi
+
+if [[ -n "$approval_answer" ]]; then
+  [[ -n "$question_id" ]] || die "--answer-approval에는 --question-id가 필요합니다"
+  if [[ "$approval_answer" == "modify" && -z "$edit_text" && -n "$command_text" ]]; then
+    edit_text="$command_text"
+  fi
+  if [[ "$approval_answer" == "modify" && -z "$edit_text" ]]; then
+    die "modify 응답에는 --edit TEXT 또는 positional TEXT가 필요합니다"
+  fi
+
+  case "$approval_answer" in
+    send)
+      answer_payload='{"kind":"option","value":"send","selected_values":["send"],"selected_labels":["전송"]}'
+      ;;
+    reject)
+      answer_payload='{"kind":"option","value":"reject","selected_values":["reject"],"selected_labels":["거절"]}'
+      ;;
+    modify)
+      answer_payload="$(jq -n --arg text "$edit_text" '{kind:"other", other_text:$text, selected_values:["__other__"]}')"
+      ;;
+  esac
+
+  payload="$(jq -n --arg qid "$question_id" --argjson answer "$answer_payload" '{questionId:$qid, answer:$answer}')"
+  curl -fsS "${auth_args[@]}" -H 'content-type: application/json' \
+    -X POST "$bridge_url/sessions/$session_id/question-answers" \
+    -d "$payload" | jq .
+  exit 0
+fi
+
+[[ -n "$command_text" ]] || die "PROMPT가 필요합니다"
+
+dry_json=false
+submit_json=true
+normalize_json=true
+if [[ "$dry_run" -eq 1 ]]; then dry_json=true; fi
+if [[ "$submit" -eq 0 ]]; then submit_json=false; fi
+if [[ "$normalize" -eq 0 ]]; then normalize_json=false; fi
+
+payload="$(jq -n --arg text "$command_text" --arg mode "$mode" --arg approval_gate "$approval_gate" --argjson dry "$dry_json" --argjson submit "$submit_json" --argjson normalize "$normalize_json" \
+  '{commandText:$text, mode:$mode, dryRun:$dry, submit:$submit, normalize:$normalize} + (if $approval_gate == "" then {} else {approvalGate:$approval_gate} end)')"
+
+curl -fsS "${auth_args[@]}" -H 'content-type: application/json' \
+  -X POST "$bridge_url/sessions/$session_id/commands" \
+  -d "$payload" | jq .

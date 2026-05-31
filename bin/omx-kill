@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+script_name="$(basename "$0")"
+bridge_url="${OMX_BRIDGE_URL:-http://127.0.0.1:3037}"
+token="${OMX_BRIDGE_TOKEN:-}"
+session_id=""
+project=""
+tmux_id=""
+force=0
+dry_run=0
+
+usage() {
+  cat <<'USAGE'
+사용법:
+  omx-kill --session SESSION_ID [--force]
+  omx-kill --project PROJECT [--force]
+  omx-kill --tmux TMUX_SESSION [--force]
+
+설명:
+  bridge session이 가리키는 tmux session을 안전하게 종료합니다.
+  bridge에는 kill API가 없으므로 최종 종료는 로컬 tmux kill-session으로 수행합니다.
+USAGE
+}
+
+log() { printf '  • %s\n' "$*" >&2; }
+ok() { printf '✅ %s\n' "$*" >&2; }
+die() { printf '❌ %s\n' "$*" >&2; exit 1; }
+trap 'rc=$?; printf "❌ 실패: line=%s exit=%s\n" "$LINENO" "$rc" >&2; exit "$rc"' ERR
+require_cmd() { command -v "$1" >/dev/null 2>&1 || die "필요한 명령어를 찾을 수 없습니다: $1"; }
+
+auth_args=()
+if [[ -n "$token" ]]; then auth_args=(-H "Authorization: Bearer $token"); fi
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    --url|--bridge-url) [[ $# -ge 2 ]] || die "$1 뒤에 URL이 필요합니다"; bridge_url="$2"; shift 2 ;;
+    --token) [[ $# -ge 2 ]] || die "--token 뒤에 token이 필요합니다"; token="$2"; auth_args=(-H "Authorization: Bearer $token"); shift 2 ;;
+    --session|-s) [[ $# -ge 2 ]] || die "--session 뒤에 id가 필요합니다"; session_id="$2"; shift 2 ;;
+    --project|-p) [[ $# -ge 2 ]] || die "--project 뒤에 프로젝트명이 필요합니다"; project="$2"; shift 2 ;;
+    --tmux|--tmux-id) [[ $# -ge 2 ]] || die "$1 뒤에 tmux session명이 필요합니다"; tmux_id="$2"; shift 2 ;;
+    --force|-f) force=1; shift ;;
+    --dry|--dry-run) dry_run=1; shift ;;
+    -*) die "알 수 없는 옵션: $1" ;;
+    *) die "알 수 없는 인자: $1" ;;
+  esac
+done
+
+require_cmd tmux
+if [[ -z "$tmux_id" ]]; then
+  require_cmd curl
+  require_cmd jq
+  sessions_json="$(curl -fsS "${auth_args[@]}" "$bridge_url/sessions")"
+  if [[ -n "$session_id" ]]; then
+    tmux_id="$(jq -r --arg id "$session_id" '.sessions[] | select(.bridgeSessionId==$id or .codexSessionId==$id or .omxSessionId==$id or .tmuxId==$id or .tmuxPaneId==$id) | .tmuxId // empty' <<<"$sessions_json" | head -n 1)"
+  elif [[ -n "$project" ]]; then
+    tmux_id="$(jq -r --arg project "$project" '[.sessions[] | select(.project==$project and .status!="ended" and (.tmuxId != null))] | sort_by(.lastEventAt // .startedAt // "") | reverse | .[0].tmuxId // empty' <<<"$sessions_json")"
+  else
+    die "--session, --project, 또는 --tmux가 필요합니다"
+  fi
+fi
+
+[[ -n "$tmux_id" ]] || die "종료할 tmux session을 찾지 못했습니다"
+if ! tmux has-session -t "$tmux_id" 2>/dev/null; then
+  die "tmux session이 존재하지 않습니다: $tmux_id"
+fi
+
+if [[ "$dry_run" -eq 1 ]]; then
+  log "미리보기: tmux kill-session -t $tmux_id"
+  exit 0
+fi
+
+if [[ "$force" -ne 1 ]]; then
+  if [[ ! -t 0 || ! -t 1 ]]; then
+    die "비대화형 환경에서는 --force가 필요합니다: $tmux_id"
+  fi
+  printf 'tmux session %s 를 종료할까요? [y/N]: ' "$tmux_id" >&2
+  read -r answer
+  case "$answer" in y|Y|yes|YES) ;; *) log "취소됨"; exit 0 ;; esac
+fi
+
+tmux kill-session -t "$tmux_id"
+ok "종료 완료: $tmux_id"

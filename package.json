@@ -1,0 +1,19 @@
+{
+  "name": "hermes-omx-bridge",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "raw-http bridge between hermes and oh-my-codex/tmux session state",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test",
+    "install:service": "scripts/install-systemd-service.sh",
+    "install:hermes-skill": "scripts/install-hermes-skill.sh",
+    "install:hermes-stack": "scripts/install-hermes-stack.sh",
+    "set:hermes-fallback-channel": "scripts/set-hermes-fallback-channel.sh",
+    "apply:runtime": "scripts/apply-runtime.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
