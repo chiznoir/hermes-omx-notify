@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Install hermes-omx-bridge helper CLIs onto PATH.
+Install hermes-omx-notify helper CLIs onto PATH.
 
 Usage:
   scripts/install-omx-cli.sh [options]

@@ -11,8 +11,8 @@ Usage:
 Options:
   --hermes-home PATH    Hermes home (default: $HERMES_HOME or ~/.hermes)
   --category NAME       Skill category folder (default: autonomous-ai-agents)
-  --name NAME           Skill folder name (default: hermes-omx-bridge)
-  --source PATH         Source skill dir (default: repo skills/hermes-omx-bridge)
+  --name NAME           Skill folder name (default: hermes-omx-notify)
+  --source PATH         Source skill dir (default: repo skills/hermes-omx-notify)
   --no-helper-skills    Do not install omx-new/omx-send/omx-kill helper skills
   --dry-run             Print actions without writing
   -h, --help            Show help
@@ -23,8 +23,8 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 hermes_home="${HERMES_HOME:-$HOME/.hermes}"
 category="autonomous-ai-agents"
-name="hermes-omx-bridge"
-source_dir="$repo_root/skills/hermes-omx-bridge"
+name="hermes-omx-notify"
+source_dir="$repo_root/skills/hermes-omx-notify"
 dry_run=0
 install_helper_skills=1
 
@@ -86,7 +86,7 @@ synced_profile_skills=()
 install_skill "$name" "$source_dir"
 
 installed_helper_skills=()
-if [[ "$install_helper_skills" == "1" && "$name" == "hermes-omx-bridge" && "$source_dir" == "$repo_root/skills/hermes-omx-bridge" ]]; then
+if [[ "$install_helper_skills" == "1" && "$name" == "hermes-omx-notify" && "$source_dir" == "$repo_root/skills/hermes-omx-notify" ]]; then
   for helper_skill in omx-new omx-send omx-kill; do
     helper_source_dir="$repo_root/skills/$helper_skill"
     install_skill "$helper_skill" "$helper_source_dir"

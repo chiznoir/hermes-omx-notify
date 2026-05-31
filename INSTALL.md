@@ -4,10 +4,10 @@ This file is written as a direct runbook for Hermes or another automation agent.
 
 ## Goal
 
-Install a same-host `hermes-omx-bridge` stack that provides:
+Install a same-host `hermes-omx-notify` stack that provides:
 
 1. `omx-new`, `omx-send`, and `omx-kill` helper CLIs on `PATH`.
-2. The `hermes-omx-bridge` Hermes skill.
+2. The `hermes-omx-notify` Hermes skill.
 3. The localhost bridge server as a systemd user service.
 4. Optional Hermes Gateway webhook subscription for Discord delivery.
 
@@ -57,8 +57,8 @@ If a value is missing, stop and ask the operator instead of inventing one. Repor
 ## Clone and verify
 
 ```bash
-git clone https://github.com/chiznoir/hermes-omx-bridge.git
-cd hermes-omx-bridge
+git clone https://github.com/chiznoir/hermes-omx-notify.git
+cd hermes-omx-notify
 npm install
 npm test
 ```
@@ -157,29 +157,29 @@ scripts/install-systemd-service.sh \
 For non-localhost exposure, generate a token and pass the token file:
 
 ```bash
-mkdir -p ~/.config/hermes-omx-bridge
-openssl rand -hex 32 > ~/.config/hermes-omx-bridge/bridge.token
-chmod 600 ~/.config/hermes-omx-bridge/bridge.token
+mkdir -p ~/.config/hermes-omx-notify
+openssl rand -hex 32 > ~/.config/hermes-omx-notify/bridge.token
+chmod 600 ~/.config/hermes-omx-notify/bridge.token
 
 scripts/install-systemd-service.sh \
   --host 127.0.0.1 \
   --port 3037 \
-  --token-file ~/.config/hermes-omx-bridge/bridge.token
+  --token-file ~/.config/hermes-omx-notify/bridge.token
 ```
 
 ### 4. Optional webhook sink
 
 ```bash
-mkdir -p ~/.config/hermes-omx-bridge
-openssl rand -hex 32 > ~/.config/hermes-omx-bridge/hermes-webhook.secret
-chmod 600 ~/.config/hermes-omx-bridge/hermes-webhook.secret
+mkdir -p ~/.config/hermes-omx-notify
+openssl rand -hex 32 > ~/.config/hermes-omx-notify/hermes-webhook.secret
+chmod 600 ~/.config/hermes-omx-notify/hermes-webhook.secret
 
 scripts/install-systemd-service.sh \
   --host 127.0.0.1 \
   --port 3037 \
   --sink \
-  --sink-url http://127.0.0.1:8644/webhooks/omx-bridge \
-  --secret-file ~/.config/hermes-omx-bridge/hermes-webhook.secret \
+  --sink-url http://127.0.0.1:8644/webhooks/omx-notify \
+  --secret-file ~/.config/hermes-omx-notify/hermes-webhook.secret \
   --channel <fallback-discord-channel-id> \
   --config ~/.hermes/config.yaml
 ```
@@ -189,7 +189,7 @@ Prefer `scripts/install-hermes-stack.sh --webhook` when possible because it also
 ## Validation
 
 ```bash
-systemctl --user status hermes-omx-bridge.service --no-pager
+systemctl --user status hermes-omx-notify.service --no-pager
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
 command -v omx-new
@@ -202,8 +202,8 @@ Webhook mode validation:
 
 ```bash
 curl -sS http://127.0.0.1:8644/health
-hermes webhook list | grep omx-bridge
-journalctl --user -u hermes-omx-bridge.service --no-pager -n 100 | grep 'bridge Hermes webhook sink enabled'
+hermes webhook list | grep omx-notify
+journalctl --user -u hermes-omx-notify.service --no-pager -n 100 | grep 'bridge Hermes webhook sink enabled'
 ```
 
 ## Final report format

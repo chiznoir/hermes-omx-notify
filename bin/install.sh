@@ -11,7 +11,7 @@ Usage:
   bin/install.sh [install-omx-cli options]
 
 Description:
-  Install only the core hermes-omx-bridge helper CLIs onto PATH:
+  Install only the core hermes-omx-notify helper CLIs onto PATH:
     omx-new
     omx-send
     omx-kill

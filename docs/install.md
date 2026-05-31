@@ -39,14 +39,14 @@ WEBHOOK_SECRET=<same value as the secret file created by scripts/install-hermes-
 ## 2. One-command install
 
 ```bash
-git clone https://github.com/chiznoir/hermes-omx-bridge.git
-cd hermes-omx-bridge
+git clone https://github.com/chiznoir/hermes-omx-notify.git
+cd hermes-omx-notify
 npm test
 scripts/install-hermes-stack.sh \
   --webhook \
   --non-interactive \
   --channel <fallback-discord-channel-id> \
-  --project hermes-omx-bridge=<project-discord-channel-id> \
+  --project hermes-omx-notify=<project-discord-channel-id> \
   --restart
 ```
 
@@ -69,17 +69,17 @@ Created/used files:
 ~/.local/bin/omx-new
 ~/.local/bin/omx-send
 ~/.local/bin/omx-kill
-~/.config/hermes-omx-bridge/hermes-omx-bridge.env
-~/.hermes/skills/autonomous-ai-agents/hermes-omx-bridge/SKILL.md
-~/.config/systemd/user/hermes-omx-bridge.service
+~/.config/hermes-omx-notify/hermes-omx-notify.env
+~/.hermes/skills/autonomous-ai-agents/hermes-omx-notify/SKILL.md
+~/.config/systemd/user/hermes-omx-notify.service
 
 # Only when --webhook is used
-~/.config/hermes-omx-bridge/hermes-webhook.secret
-~/.config/hermes-omx-bridge/project-channels.json
+~/.config/hermes-omx-notify/hermes-webhook.secret
+~/.config/hermes-omx-notify/project-channels.json
 ~/.hermes/webhook_subscriptions.json
 ```
 
-The default scope is `--scope user`. The service is installed under `~/.config/systemd/user/hermes-omx-bridge.service`, not `/etc/systemd/system`. Use `systemctl --user ...` for checks and restarts. The service runs `npm start`, and `package.json` maps that to `node src/server.js`.
+The default scope is `--scope user`. The service is installed under `~/.config/systemd/user/hermes-omx-notify.service`, not `/etc/systemd/system`. Use `systemctl --user ...` for checks and restarts. The service runs `npm start`, and `package.json` maps that to `node src/server.js`.
 
 ## 3. Manual helper CLI install only
 
@@ -99,12 +99,12 @@ This installer does not modify Codex global hooks.
 For localhost-only `127.0.0.1`, a token can be omitted. If another host/container can reach the bridge, enable a token.
 
 ```bash
-mkdir -p ~/.config/hermes-omx-bridge
-openssl rand -hex 32 > ~/.config/hermes-omx-bridge/bridge.token
-chmod 600 ~/.config/hermes-omx-bridge/bridge.token
+mkdir -p ~/.config/hermes-omx-notify
+openssl rand -hex 32 > ~/.config/hermes-omx-notify/bridge.token
+chmod 600 ~/.config/hermes-omx-notify/bridge.token
 
 scripts/install-hermes-stack.sh \
-  --token-file ~/.config/hermes-omx-bridge/bridge.token
+  --token-file ~/.config/hermes-omx-notify/bridge.token
 ```
 
 Set the same token in Hermes Gateway:
@@ -117,9 +117,9 @@ OMX_BRIDGE_TOKEN=<bridge.token value>
 ## 5. Validation
 
 ```bash
-systemctl --user list-units --type=service --all | grep hermes-omx-bridge
-systemctl --user status hermes-omx-bridge.service
-systemctl --user cat hermes-omx-bridge.service
+systemctl --user list-units --type=service --all | grep hermes-omx-notify
+systemctl --user status hermes-omx-notify.service
+systemctl --user cat hermes-omx-notify.service
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
 command -v omx-new omx-send omx-kill
@@ -129,7 +129,7 @@ curl -sS http://127.0.0.1:8644/health
 From Discord/Hermes:
 
 ```text
-Use hermes-omx-bridge to check bridge health and sessions.
+Use hermes-omx-notify to check bridge health and sessions.
 ```
 
 ## 6. Runtime env complexity rule
@@ -144,7 +144,7 @@ The runtime env file should contain only enabled features, secrets/IDs, and non-
 
 # Required when enabling Hermes webhook sink
 BRIDGE_HERMES_WEBHOOK_ENABLED=true
-BRIDGE_HERMES_WEBHOOK_URL=http://127.0.0.1:8644/webhooks/omx-bridge
+BRIDGE_HERMES_WEBHOOK_URL=http://127.0.0.1:8644/webhooks/omx-notify
 BRIDGE_HERMES_WEBHOOK_SECRET=<secret>
 BRIDGE_HERMES_DEFAULT_CHANNEL_ID=<fallback-channel-id>
 
@@ -164,10 +164,10 @@ BRIDGE_HERMES_ALLOWLIST=true
 ### Defaults usually omitted
 
 - `HOST=127.0.0.1`, `PORT=3037`, `BRIDGE_PUBLIC_URL=http://127.0.0.1:3037`
-- `BRIDGE_STATE_ROOT=~/.local/state/hermes-omx-bridge` for user services
+- `BRIDGE_STATE_ROOT=~/.local/state/hermes-omx-notify` for user services
 - `BRIDGE_HERMES_WEBHOOK_EVENT_TYPES=AskPermission,FinalAnswer`
 - `BRIDGE_HERMES_NOTIFICATION_MODE=direct`
-- `BRIDGE_HERMES_PROJECT_CHANNEL_MAP=~/.config/hermes-omx-bridge/project-channels.json`
+- `BRIDGE_HERMES_PROJECT_CHANNEL_MAP=~/.config/hermes-omx-notify/project-channels.json`
 - `BRIDGE_NOTIFY_EVENT_TYPES=SessionStart,SessionLinked,SessionEnd,CommandSubmitted`
 - `BRIDGE_NOTIFY_DELIVERY_SINK=discord-fast`
 - `BRIDGE_FINAL_BLOCK=true`, `BRIDGE_FINAL_WAIT_MS=10000`, `BRIDGE_FINAL_SINK=hermes`

@@ -26,8 +26,8 @@ usage() {
   `--direct`/`-d`는 `--attach`/`-a`, `--name`, `--json`과 함께 사용할 수 없습니다.
 
 예시:
-  omx-new ~/work/omx-bridge
-  omx-new . --name omx-bridge-main --attach
+  omx-new ~/work/omx-notify
+  omx-new . --name omx-notify-main --attach
   omx-new ~/work/app -d
   omx-new ~/work/app -- --model gpt-5.5
 USAGE

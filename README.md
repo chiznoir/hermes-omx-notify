@@ -1,4 +1,4 @@
-# hermes-omx-bridge
+# hermes-omx-notify
 
 **Localhost-first bridge core for Hermes, OMX, Codex, and tmux-backed agent sessions.**
 
@@ -11,11 +11,11 @@
 ![localhost first](https://img.shields.io/badge/security-localhost--first-blue)
 ![tests](https://img.shields.io/badge/tests-node%20--test-brightgreen)
 
-`hermes-omx-bridge` is the **bridge core**: a small, auditable HTTP service and helper CLI set that lets Hermes work with local OMX/Codex sessions. It discovers sessions from local logs and tmux, reads full Codex answers, dispatches follow-up commands into visible tmux panes, and forwards selected events to Discord through Hermes Gateway.
+`hermes-omx-notify` is the **bridge core**: a small, auditable HTTP service and helper CLI set that lets Hermes work with local OMX/Codex sessions. It discovers sessions from local logs and tmux, reads full Codex answers, dispatches follow-up commands into visible tmux panes, and forwards selected events to Discord through Hermes Gateway.
 
 ```text
 Hermes / Discord
-  -> hermes-omx-bridge on 127.0.0.1
+  -> hermes-omx-notify on 127.0.0.1
      -> session registry / event router / command dispatch / audit log
   -> local OMX + Codex JSONL logs + tmux panes
 ```
@@ -60,8 +60,8 @@ Use it when you want to:
 For a complete agent-friendly runbook, start with [INSTALL.md](INSTALL.md). For an already prepared Hermes Gateway + Discord host, the shortest path is:
 
 ```bash
-git clone https://github.com/chiznoir/hermes-omx-bridge.git
-cd hermes-omx-bridge
+git clone https://github.com/chiznoir/hermes-omx-notify.git
+cd hermes-omx-notify
 npm install
 npm test
 
@@ -70,13 +70,13 @@ scripts/install-hermes-stack.sh \
   --non-interactive \
   --restart \
   --channel <fallback-discord-channel-id> \
-  --project hermes-omx-bridge=<project-discord-channel-id>
+  --project hermes-omx-notify=<project-discord-channel-id>
 ```
 
 Validate the install:
 
 ```bash
-systemctl --user status hermes-omx-bridge.service --no-pager
+systemctl --user status hermes-omx-notify.service --no-pager
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
 command -v omx-new omx-send omx-kill
@@ -123,7 +123,7 @@ Defaults usually omitted:
 ```env
 # HOST=127.0.0.1
 # PORT=3037
-# BRIDGE_STATE_ROOT=~/.local/state/hermes-omx-bridge
+# BRIDGE_STATE_ROOT=~/.local/state/hermes-omx-notify
 # BRIDGE_PUBLIC_URL=http://127.0.0.1:3037
 ```
 
@@ -139,7 +139,7 @@ Recommended Hermes Gateway webhook + Discord thread setup:
 
 ```env
 BRIDGE_HERMES_WEBHOOK_ENABLED=true
-BRIDGE_HERMES_WEBHOOK_URL=http://127.0.0.1:8644/webhooks/omx-bridge
+BRIDGE_HERMES_WEBHOOK_URL=http://127.0.0.1:8644/webhooks/omx-notify
 BRIDGE_HERMES_WEBHOOK_SECRET=<same-as-Hermes-WEBHOOK_SECRET>
 BRIDGE_HERMES_DEFAULT_CHANNEL_ID=<fallback-discord-channel-id>
 BRIDGE_DISCORD_FAST_EVENTS_ENABLED=true
@@ -150,7 +150,7 @@ BRIDGE_NOTIFY_INCLUDE_UNMAPPED_CODEX_LOGS=true
 BRIDGE_HERMES_ALLOWLIST=true
 ```
 
-`BRIDGE_HERMES_WEBHOOK_EVENT_TYPES=AskPermission,FinalAnswer`, `BRIDGE_HERMES_NOTIFICATION_MODE=direct`, `BRIDGE_HERMES_PROJECT_CHANNEL_MAP=~/.config/hermes-omx-bridge/project-channels.json`, `BRIDGE_NOTIFY_EVENT_TYPES=SessionStart,SessionLinked,SessionEnd,CommandSubmitted`, `BRIDGE_NOTIFY_DELIVERY_SINK=discord-fast`, and `BRIDGE_HERMES_RESTART=true` are defaults or have default paths, so they are usually omitted.
+`BRIDGE_HERMES_WEBHOOK_EVENT_TYPES=AskPermission,FinalAnswer`, `BRIDGE_HERMES_NOTIFICATION_MODE=direct`, `BRIDGE_HERMES_PROJECT_CHANNEL_MAP=~/.config/hermes-omx-notify/project-channels.json`, `BRIDGE_NOTIFY_EVENT_TYPES=SessionStart,SessionLinked,SessionEnd,CommandSubmitted`, `BRIDGE_NOTIFY_DELIVERY_SINK=discord-fast`, and `BRIDGE_HERMES_RESTART=true` are defaults or have default paths, so they are usually omitted.
 
 `BRIDGE_HERMES_ALLOWLIST=true` lets the bridge add newly mapped project channels to Hermes Gateway's Discord allowlists. Session threads are routed under the already-allowed parent/project channel and are not added as separate allowlist entries. Existing entries are checked across YAML continuation lines, so an already allowed channel is a no-op and must not restart Gateway.
 

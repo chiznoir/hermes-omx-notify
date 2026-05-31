@@ -7,7 +7,7 @@ prerequisites:
 metadata:
   hermes:
     tags: [omx, bridge, tmux, stop, cleanup]
-    related_skills: [hermes-omx-bridge, omx-new, omx-send]
+    related_skills: [hermes-omx-notify, omx-new, omx-send]
     requires_toolsets: [terminal]
     triggers:
       - 종료, 이 세션 종료해, 세션 kill, kill, 킬, 세션 죽여, 죽여, stop/close/clean up session -> omx-kill
@@ -22,7 +22,7 @@ This skill owns existing-session termination. Use `omx-kill` to terminate the tm
 ## Boundary
 
 - Owns: stopping/killing/closing an existing OMX/Codex session.
-- Does not own: creating sessions (`omx-new`), sending prompts/approvals (`omx-send`), or bridge read/status inspection (`hermes-omx-bridge`).
+- Does not own: creating sessions (`omx-new`), sending prompts/approvals (`omx-send`), or bridge read/status inspection (`hermes-omx-notify`).
 - In Discord notification replies, the target is the replied alert metadata (`bridge_session_id`, `session:`, or exact `tmux:`), not the latest same-project session.
 
 ## Safety

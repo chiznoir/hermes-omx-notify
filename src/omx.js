@@ -269,7 +269,7 @@ async function readMadmaxRunMetadata(root) {
       launcher: asString(parsed.launcher),
     };
   } catch (error) {
-    console.error(`[omx-bridge] failed to read madmax run metadata ${madmaxRunMetadataPath(root)}: ${error?.message || error}`);
+    console.error(`[omx-notify] failed to read madmax run metadata ${madmaxRunMetadataPath(root)}: ${error?.message || error}`);
     return null;
   }
 }
@@ -379,7 +379,7 @@ async function readTerminalPendingProjectRootRecords(projectRoot, options = {}) 
       .filter((record) => terminalPendingRootFreshEnough(record.lastSeenAt, options));
   } catch (error) {
     if (options.warnOnTerminalPendingRootDiscoveryError !== false) {
-      console.error(`[omx-bridge] failed to read terminal pending roots from event index ${path}: ${error?.message || error}`);
+      console.error(`[omx-notify] failed to read terminal pending roots from event index ${path}: ${error?.message || error}`);
     }
     return [];
   } finally {
@@ -562,7 +562,7 @@ async function readDiscoveredProjectRootRecords(projectRoot, options = {}) {
     );
   } catch (error) {
     if (options.warnOnDiscoveredProjectRootRegistryError !== false) {
-      console.error(`[omx-bridge] failed to read discovered project root registry ${path}: ${error?.message || error}`);
+      console.error(`[omx-notify] failed to read discovered project root registry ${path}: ${error?.message || error}`);
     }
     return [];
   }

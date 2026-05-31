@@ -7,7 +7,7 @@ prerequisites:
 metadata:
   hermes:
     tags: [omx, bridge, tmux, codex, session]
-    related_skills: [hermes-omx-bridge, omx-send, omx-kill]
+    related_skills: [hermes-omx-notify, omx-send, omx-kill]
     requires_toolsets: [terminal]
     triggers:
       - 새 세션, 세션 열어, 시작해, create/launch/start/watch a new OMX session -> omx-new
@@ -23,7 +23,7 @@ Hermes should use `omx-new` rather than raw `omx --madmax --high`; the helper ow
 ## Boundary
 
 - Owns: creating/launching a new visible OMX/Codex session.
-- Does not own: sending prompts to an existing session (`omx-send`), killing sessions (`omx-kill`), or bridge read/status inspection (`hermes-omx-bridge`).
+- Does not own: sending prompts to an existing session (`omx-send`), killing sessions (`omx-kill`), or bridge read/status inspection (`hermes-omx-notify`).
 - Bridge webhook `SessionStart` alert bodies are notifications, not requests to create another session.
 - `/new` or `/resume` inside an existing Codex pane prompt is a Codex slash command and should be delivered by `omx-send`, not handled here.
 
@@ -48,7 +48,7 @@ omx-new /path/to/repo --json
 omx-new /path/to/repo --name omx-project-main
 ```
 
-After launch, use `hermes-omx-bridge` or:
+After launch, use `hermes-omx-notify` or:
 
 ```bash
 omx-send --project <project> "현재 상태를 요약해줘"
