@@ -11,9 +11,9 @@
 의존성 기준:
 
 - Node.js **20+** / npm: bridge server 실행, package 설치, test에 필요합니다.
-- `tmux`: visible OMX/Codex session과 `omx-new` / `omx-kill`에 필요합니다.
+- `tmux`: visible managed GJC session과 `tmux-new` / `tmux-kill`에 필요합니다.
 - `curl`: health check, 설치 검증, helper CLI의 bridge HTTP 호출에 필요합니다.
-- `jq`: bridge JSON을 읽거나 JSON payload를 만드는 helper CLI에 필요합니다. 특히 `omx-send`와 `omx-kill`은 `jq`가 없으면 실행을 중단하므로, helper CLI를 `PATH`에 설치하는 모드에서는 필수로 봅니다.
+- `jq`: bridge JSON을 읽거나 JSON payload를 만드는 helper CLI에 필요합니다. 특히 `tmux-send`와 `tmux-kill`은 `jq`가 없으면 실행을 중단하므로, helper CLI를 `PATH`에 설치하는 모드에서는 필수로 봅니다.
 - Hermes Gateway: webhook/Discord push delivery를 켤 때만 필요합니다. agent bridge-only 모드는 Gateway 없이도 설치할 수 있습니다.
 
 ```bash
@@ -66,9 +66,9 @@ BRIDGE_HERMES_RESTART_CMD=systemctl --user restart --no-block hermes-gateway.ser
 생성/사용 파일:
 
 ```text
-~/.local/bin/omx-new
-~/.local/bin/omx-send
-~/.local/bin/omx-kill
+~/.local/bin/tmux-new
+~/.local/bin/tmux-send
+~/.local/bin/tmux-kill
 ~/.config/hermes-omx-notify/hermes-omx-notify.env
 ~/.hermes/skills/autonomous-ai-agents/hermes-omx-notify/SKILL.md
 ~/.config/systemd/user/hermes-omx-notify.service
@@ -93,7 +93,7 @@ BRIDGE_HERMES_RESTART_CMD=systemctl --user restart --no-block hermes-gateway.ser
 bin/install.sh --force
 # 또는
 scripts/install-omx-cli.sh --force
-command -v omx-new omx-send omx-kill
+command -v tmux-new tmux-send tmux-kill
 ```
 
 이 installer는 Codex global hook을 수정하지 않습니다.
@@ -127,7 +127,7 @@ systemctl --user status hermes-omx-notify.service
 systemctl --user cat hermes-omx-notify.service
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
-command -v omx-new omx-send omx-kill
+command -v tmux-new tmux-send tmux-kill
 curl -sS http://127.0.0.1:8644/health
 ```
 

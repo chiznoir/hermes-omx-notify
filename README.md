@@ -1,4 +1,4 @@
-# hermes-omx-notify
+# hermes-tmux-bridge
 
 **Localhost-first notification and control bridge for Hermes, OMX, Codex, and tmux-backed agent sessions.**
 
@@ -11,13 +11,13 @@
 ![localhost first](https://img.shields.io/badge/security-localhost--first-blue)
 ![tests](https://img.shields.io/badge/tests-node%20--test-brightgreen)
 
-`hermes-omx-notify` lets Hermes observe and control local OMX/Codex sessions without exposing a public control plane. It runs on `127.0.0.1`, discovers sessions from OMX lifecycle evidence, Codex JSONL logs, and tmux panes, then forwards selected events to Hermes Gateway / Discord.
+`hermes-tmux-bridge` lets Hermes observe and control local GJC tmux sessions without exposing a public control plane. On `gajae-version`, it runs on `127.0.0.1`, discovers sessions from GJC JSONL logs plus managed tmux ownership tags, then forwards selected events to Hermes Gateway / Discord.
 
 ```text
 Hermes / Discord
-  -> hermes-omx-notify on 127.0.0.1
+  -> hermes-tmux-bridge on 127.0.0.1
      -> session registry / event router / command dispatch / audit log
-  -> local OMX + Codex JSONL logs + tmux panes
+  -> local GJC JSONL logs + managed tmux panes
 ```
 
 ## What it does
@@ -25,7 +25,7 @@ Hermes / Discord
 - **Session discovery** — merges OMX lifecycle logs, Codex JSONL sessions, and tmux panes into one bridge session view.
 - **Full output access** — reads the latest assistant/final-answer text instead of only short notification previews.
 - **Command dispatch** — sends follow-up instructions into the visible tmux pane through bridge audit paths.
-- **Helper CLIs** — installs `omx-new`, `omx-send`, and `omx-kill` for Hermes-friendly session lifecycle operations.
+- **Helper CLIs** — installs `tmux-new`, `tmux-send`, and `tmux-kill` for Hermes-friendly session lifecycle operations.
 - **Discord delivery** — routes `AskPermission`, `FinalAnswer`, lifecycle, and command events through Hermes webhook or direct Discord fast-path delivery.
 - **Project channel routing** — resolves, creates, and records project-specific Discord channel mappings.
 
@@ -34,8 +34,8 @@ Hermes / Discord
 For a complete agent-facing runbook, use [INSTALL.md](INSTALL.md). If Hermes Gateway and Discord are already prepared, the shortest path is:
 
 ```bash
-git clone https://github.com/chiznoir/hermes-omx-notify.git
-cd hermes-omx-notify
+git clone https://github.com/chiznoir/hermes-tmux-bridge.git
+cd hermes-tmux-bridge
 npm install
 npm test
 
@@ -44,16 +44,16 @@ scripts/install-hermes-stack.sh \
   --non-interactive \
   --restart \
   --channel <fallback-discord-channel-id> \
-  --project hermes-omx-notify=<project-discord-channel-id>
+  --project hermes-tmux-bridge=<project-discord-channel-id>
 ```
 
 Validate the install:
 
 ```bash
-systemctl --user status hermes-omx-notify.service --no-pager
+systemctl --user status hermes-tmux-bridge.service --no-pager
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
-command -v omx-new omx-send omx-kill
+command -v tmux-new tmux-send tmux-kill
 ```
 
 Expected health response:

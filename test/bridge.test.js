@@ -55,22 +55,103 @@ ROOT_PATH=${JSON.stringify(root)}
 CALL_LOG=${JSON.stringify(fakeTmuxCallsPath)}
 case "$1" in
   list-panes)
-    printf 'bridge-test\\t%%77\\t4242\\t0\\t%s\\n' "$ROOT_PATH"
+    printf 'bridge-test	%%77	4242	0	%s
+' "$ROOT_PATH"
     ;;
   list-sessions)
-    printf 'bridge-test\\t1777379336\\t1\\n'
+    printf 'bridge-test	1777379336	1
+'
     ;;
   send-keys)
-    printf '%s\\n' "$*" >> "$CALL_LOG"
+    printf '%s\n' "$*" >> "$CALL_LOG"
     ;;
   *)
     exit 1
     ;;
 esac
-`);
+`)
   await chmod(fakeTmuxBin, 0o755);
 
   return { root, codexHome, codexSessionId, logPath, fakeTmuxBin, fakeTmuxCallsPath };
+}
+async function gjcFixture() {
+  const root = await mkdtemp(join(tmpdir(), 'gjc-bridge-'));
+  const homeRoot = await mkdtemp(join(tmpdir(), 'gjc-home-'));
+  const xdgRoot = await mkdtemp(join(tmpdir(), 'gjc-xdg-'));
+  const sessionId = '019e9000-4444-7000-dddd-eeeeeeeeeeee';
+  const sessionsDir = join(xdgRoot, 'gjc', 'sessions', 'project-a');
+  await mkdir(sessionsDir, { recursive: true });
+  const logPath = join(sessionsDir, `${sessionId}.jsonl`);
+  const lines = [
+    { type: 'session', version: 3, id: sessionId, timestamp: '2026-06-04T12:28:56.761Z', cwd: root, title: 'GJC bridge session' },
+    { type: 'message', id: 'gjc-user-1', timestamp: '2026-06-04T12:29:00.000Z', message: { role: 'user', content: [{ type: 'text', text: '상태 확인해줘' }] } },
+    {
+      type: 'message',
+      id: 'gjc-working-1',
+      timestamp: '2026-06-04T12:29:04.000Z',
+      message: { role: 'assistant', content: [{ type: 'toolCall', id: 'call-gjc-1', name: 'read', arguments: { path: 'README.md' } }] },
+      stopReason: 'toolUse',
+    },
+    {
+      type: 'message',
+      id: 'gjc-final-1',
+      timestamp: '2026-06-04T12:29:10.000Z',
+      message: { role: 'assistant', content: [{ type: 'text', text: '현재 상태는 정상입니다. '.repeat(40) }] },
+      stopReason: 'stop',
+    },
+  ];
+  await writeFile(logPath, lines.map((line) => JSON.stringify(line)).join('\n'));
+  return { root, homeRoot, xdgRoot, sessionId, logPath };
+}
+
+async function writeManagedGjcTmuxBin(root, { managed = true, displayManaged = managed } = {}) {
+  const fakeTmuxCallsPath = join(root, '.omx', 'logs', `fake-gjc-tmux-${managed ? 'managed' : 'unmanaged'}-${displayManaged ? 'display-ok' : 'display-fail'}.log`);
+  const fakeTmuxBin = join(root, `fake-gjc-tmux-${managed ? 'managed' : 'unmanaged'}-${displayManaged ? 'display-ok' : 'display-fail'}.sh`);
+  const projectSlug = 'project-a';
+  const ownerKey = 'owner-key-1';
+  const startedAt = '2026-06-04T12:28:56.761Z';
+  const sessionId = '019e9000-4444-7000-dddd-eeeeeeeeeeee';
+  const paneProfile = managed ? '1' : '';
+  const paneBranch = managed ? 'gjc' : '';
+  const paneBranchSlug = managed ? 'gjc' : '';
+  const paneProject = managed ? projectSlug : '';
+  const displayProfile = displayManaged ? '1' : '';
+  const displayBranch = displayManaged ? 'gjc' : '';
+  const displayBranchSlug = displayManaged ? 'gjc' : '';
+  const displayProject = displayManaged ? projectSlug : '';
+  await writeFile(fakeTmuxBin, `#!/bin/sh
+ROOT_PATH=${JSON.stringify(root)}
+CALL_LOG=${JSON.stringify(fakeTmuxCallsPath)}
+case "$1" in
+  list-panes)
+    suffix=''
+    case "$*" in *'@gjc-session-id'*) suffix='	${managed ? sessionId : ''}' ;; esac
+    printf 'gjc-managed	%%88	4242	0	%s	${paneProfile}	${paneBranch}	${paneBranchSlug}	${paneProject}	${managed ? ownerKey : ''}	${managed ? startedAt : ''}%s
+' "$ROOT_PATH" "$suffix"
+    ;;
+  list-sessions)
+    suffix=''
+    case "$*" in *'@gjc-session-id'*) suffix='	${managed ? sessionId : ''}' ;; esac
+    printf 'gjc-managed	1777379336	1	${paneProfile}	${paneBranch}	${paneBranchSlug}	${paneProject}	${managed ? ownerKey : ''}	${managed ? startedAt : ''}%s
+' "$suffix"
+    ;;
+  display-message)
+    suffix=''
+    case "$*" in *'@gjc-session-id'*) suffix='	${displayManaged ? sessionId : ''}' ;; esac
+    printf 'gjc-managed	%%88	${displayProfile}	${displayBranch}	${displayBranchSlug}	${displayProject}	${displayManaged ? ownerKey : ''}	${displayManaged ? startedAt : ''}%s
+' "$suffix"
+    ;;
+  send-keys)
+    printf '%s
+' "$*" >> "$CALL_LOG"
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+`)
+  await chmod(fakeTmuxBin, 0o755);
+  return { fakeTmuxBin, fakeTmuxCallsPath };
 }
 
 async function withEnv(env, fn) {
@@ -156,16 +237,96 @@ test('Bearer auth protects bridge APIs while leaving health public', async () =>
 
 test('GET /sessions returns mapped Codex/OMX session fields', async () => {
   const { root, codexHome, codexSessionId } = await fixture();
-  const server = createServer({ projectRoot: root, codexHome });
-  const res = await request(server, '/sessions');
-  assert.equal(res.status, 200);
-  assert.equal(res.json.sessions[0].codexSessionId, codexSessionId);
-  assert.equal(res.json.sessions[0].threadId, codexSessionId);
-  assert.equal(res.json.sessions[0].project, root.split('/').pop());
-  assert.equal(res.json.sessions[0].status, 'unknown');
-  assert.equal(res.json.sessions[0].activityState, 'idle');
-  assert.equal(res.json.sessions[0].activity.latestEventType, 'SessionIdle');
-  assert.equal(res.json.sessions[0].activity.lastSignal, 'final');
+  await mkdir(join(root, 'empty-gjc'), { recursive: true });
+  await withEnv({ GJC_SESSIONS_ROOT: join(root, 'empty-gjc') }, async () => {
+    const server = createServer({ projectRoot: root, codexHome });
+    const res = await request(server, '/sessions');
+    assert.equal(res.status, 200);
+    assert.equal(res.json.sessions[0].codexSessionId, codexSessionId);
+    assert.equal(res.json.sessions[0].threadId, codexSessionId);
+    assert.equal(res.json.sessions[0].project, root.split('/').pop());
+    assert.equal(res.json.sessions[0].status, 'unknown');
+    assert.equal(res.json.sessions[0].activityState, 'idle');
+    assert.equal(res.json.sessions[0].activity.latestEventType, 'SessionIdle');
+    assert.equal(res.json.sessions[0].activity.lastSignal, 'final');
+  });
+});
+test('GET /sessions surfaces gjc sessions with lifecycle status separate from activityState', async () => {
+  const { root, homeRoot, xdgRoot, sessionId } = await gjcFixture();
+
+  await withEnv({ HOME: homeRoot, XDG_DATA_HOME: xdgRoot, GJC_SESSIONS_ROOT: undefined }, async () => {
+    const server = createServer({ projectRoot: root });
+    const res = await request(server, '/sessions');
+    assert.equal(res.status, 200);
+    assert.equal(res.json.sessions[0].gjcSessionId, sessionId);
+    assert.equal(res.json.sessions[0].bridgeSessionId, sessionId);
+    assert.equal(res.json.sessions[0].status, 'unknown');
+    assert.equal(res.json.sessions[0].activityState, 'idle');
+    assert.equal(res.json.sessions[0].activity.latestEventType, 'SessionIdle');
+    assert.equal(res.json.sessions[0].activity.source, 'gjc-log');
+    assert.equal(res.json.sessions[0].lifecycleOwner, 'gjc');
+  });
+});
+
+test('GET /sessions/:id routes gjc state, events, and latest idle text from gjc JSONL', async () => {
+  const { root, homeRoot, xdgRoot, sessionId, logPath } = await gjcFixture();
+
+  await withEnv({ HOME: homeRoot, XDG_DATA_HOME: xdgRoot, GJC_SESSIONS_ROOT: undefined }, async () => {
+    const server = createServer({ projectRoot: root });
+
+    const detail = await request(server, `/sessions/${sessionId}`);
+    assert.equal(detail.status, 200);
+    assert.equal(detail.json.gjcSessionId, sessionId);
+    assert.equal(detail.json.status, 'unknown');
+    assert.equal(detail.json.activityState, 'idle');
+
+    const state = await request(server, `/sessions/${sessionId}/state`);
+    assert.equal(state.status, 200);
+    assert.equal(state.json.session.gjcSessionId, sessionId);
+    assert.equal(state.json.activity.state, 'idle');
+    assert.equal(state.json.activity.latestEventType, 'SessionIdle');
+
+    const events = await request(server, `/sessions/${sessionId}/events`);
+    assert.equal(events.status, 200);
+    assert.deepEqual(events.json.events.map((event) => event.type), ['CommandSubmitted', 'FinalAnswer', 'SessionIdle']);
+    assert.equal(events.json.events[1].source, 'gjc-log');
+
+    const idle = await request(server, `/sessions/${sessionId}/idle/latest`);
+    assert.equal(idle.status, 200);
+    assert.match(idle.json.fullText, /현재 상태는 정상입니다/);
+    assert.equal(idle.json.sourceLogPath, logPath);
+  });
+});
+
+test('POST /sessions/:id/commands dispatches only to managed GJC tmux targets', async () => {
+  const { root, homeRoot, xdgRoot, sessionId } = await gjcFixture();
+  const managed = await writeManagedGjcTmuxBin(root, { managed: true, displayManaged: true });
+  const unmanaged = await writeManagedGjcTmuxBin(root, { managed: true, displayManaged: false });
+
+  await withEnv({ HOME: homeRoot, XDG_DATA_HOME: xdgRoot, GJC_SESSIONS_ROOT: undefined, TMUX_BIN: managed.fakeTmuxBin }, async () => {
+    const res = await request(createServer({ projectRoot: root }), `/sessions/${sessionId}/commands`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ commandText: 'managed gjc dispatch', submit: false }),
+    });
+    assert.equal(res.status, 202);
+    assert.equal(res.json.delivery.ok, true);
+    assert.equal(res.json.interaction.tmuxId, 'gjc-managed');
+    const calls = await readFile(managed.fakeTmuxCallsPath, 'utf8');
+    assert.match(calls, /send-keys -t %88 -l -- managed gjc dispatch/);
+  });
+
+  await withEnv({ HOME: homeRoot, XDG_DATA_HOME: xdgRoot, GJC_SESSIONS_ROOT: undefined, TMUX_BIN: unmanaged.fakeTmuxBin }, async () => {
+    const res = await request(createServer({ projectRoot: root }), `/sessions/${sessionId}/commands`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ commandText: 'should reject unmanaged target', submit: false }),
+    });
+    assert.equal(res.status, 409);
+    assert.equal(res.json.delivery.ok, false);
+    assert.equal(res.json.delivery.reason, 'unmanaged-gjc-target');
+    assert.match(res.json.delivery.error, /managed gjc tmux target required/);
+  });
 });
 
 test('GET /sessions hides Codex-only sessions by default and exposes them on explicit opt-in', async () => {
@@ -184,19 +345,22 @@ test('GET /sessions hides Codex-only sessions by default and exposes them on exp
       pid: 456,
     }),
   ].join('\n') + '\n');
+  await mkdir(join(root, 'empty-gjc'), { recursive: true });
 
-  const defaultRes = await request(createServer({ projectRoot: root, codexHome }), '/sessions?activity=false');
-  assert.equal(defaultRes.status, 200);
-  assert.equal(defaultRes.json.meta.includeCodexOnlySessions, false);
-  assert.deepEqual(defaultRes.json.sessions.map((session) => session.codexSessionId), [codexSessionId]);
+  await withEnv({ GJC_SESSIONS_ROOT: join(root, 'empty-gjc') }, async () => {
+    const defaultRes = await request(createServer({ projectRoot: root, codexHome }), '/sessions?activity=false');
+    assert.equal(defaultRes.status, 200);
+    assert.equal(defaultRes.json.meta.includeCodexOnlySessions, false);
+    assert.deepEqual(defaultRes.json.sessions.map((session) => session.codexSessionId), [codexSessionId]);
 
-  const debugRes = await request(createServer({ projectRoot: root, codexHome }), '/sessions?activity=false&includeNativeOnly=true');
-  assert.equal(debugRes.status, 200);
-  assert.equal(debugRes.json.meta.includeCodexOnlySessions, true);
-  assert.equal(
-    debugRes.json.sessions.find((session) => session.codexSessionId === nativeOnlySessionId)?.hasOmxLifecycle,
-    false,
-  );
+    const debugRes = await request(createServer({ projectRoot: root, codexHome }), '/sessions?activity=false&includeNativeOnly=true');
+    assert.equal(debugRes.status, 200);
+    assert.equal(debugRes.json.meta.includeCodexOnlySessions, true);
+    assert.equal(
+      debugRes.json.sessions.find((session) => session.codexSessionId === nativeOnlySessionId)?.hasOmxLifecycle,
+      false,
+    );
+  });
 });
 
 test('GET /sessions resolves omx ids and maps tmux hook targets when tmux is available', async () => {

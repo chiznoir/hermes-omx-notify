@@ -2,13 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { chmod, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { getSessionById, inferSessionKind, listSessions } from '../src/control-plane/registry.js';
 import { decideBackend, normalizeCommandMode } from '../src/control-plane/policy.js';
 import { appendAudit, auditEventToRouterEvent, readAuditLog } from '../src/control-plane/audit-log.js';
 import { openEventIndex, upsertEvents } from '../src/control-plane/event-index.js';
 import { routeSessionEvents } from '../src/control-plane/event-router.js';
 import { buildSessionIndex } from '../src/omx.js';
+import { buildSessionIndex as buildGjcSessionIndex } from '../src/gjc.js';
+import { listGjcSessionLogPaths, readGjcLog } from '../src/gjc-log.js';
 
 async function withEnv(env, fn) {
   const previous = new Map();
@@ -26,6 +28,34 @@ async function withEnv(env, fn) {
     }
   }
 }
+async function writeGjcSession(root, sessionId, lines, options = {}) {
+  const relative = options.relativePath || `${sessionId}.jsonl`;
+  const path = join(root, relative);
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, lines.map((line) => JSON.stringify(line)).join('\n'));
+  return path;
+}
+
+function gjcSessionLines({ sessionId, cwd, startedAt, title = 'GJC Session', userText = '상태 확인', assistantText = '완료했습니다.', toolName = 'read' } = {}) {
+  return [
+    { type: 'session', version: 3, id: sessionId, timestamp: startedAt, cwd, title },
+    { type: 'message', id: `${sessionId}-user`, timestamp: '2026-06-04T10:00:05.000Z', message: { role: 'user', content: [{ type: 'text', text: userText }] } },
+    {
+      type: 'message',
+      id: `${sessionId}-working`,
+      timestamp: '2026-06-04T10:00:06.000Z',
+      message: { role: 'assistant', content: [{ type: 'toolCall', id: `call-${sessionId}`, name: toolName, arguments: { path: 'README.md' } }] },
+      stopReason: 'toolUse',
+    },
+    {
+      type: 'message',
+      id: `${sessionId}-final`,
+      timestamp: '2026-06-04T10:00:10.000Z',
+      message: { role: 'assistant', content: [{ type: 'text', text: assistantText }] },
+      stopReason: 'stop',
+    },
+  ];
+}
 
 test('session kind policy infers team, tmux, and codex-thread sessions', () => {
   assert.equal(inferSessionKind({ cwd: '/home/user/work/omx-bridge/.omx/team/worker-1', project: 'worker-1' }), 'omx-team');
@@ -42,6 +72,76 @@ test('backend policy normalizes mode and respects forced visible/team routing', 
   assert.deepEqual(decideBackend({ kind: 'omx-team' }, { mode: 'auto' }), { backend: 'tmux', reason: 'auto-tmux-default' });
   assert.deepEqual(decideBackend({ kind: 'omx-tmux' }, { mode: 'auto' }), { backend: 'tmux', reason: 'auto-tmux-default' });
   assert.deepEqual(decideBackend({ kind: 'codex-thread' }, { mode: 'auto', visible: true }), { backend: 'tmux', reason: 'visible-control-requested' });
+});
+test('gjc log reader parses version 3 session headers and assistant lifecycle messages', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'gjc-log-'));
+  const sessionId = '019e9000-1111-7000-aaaa-bbbbbbbbbbbb';
+  const logPath = await writeGjcSession(root, sessionId, gjcSessionLines({
+    sessionId,
+    cwd: root,
+    startedAt: '2026-06-04T10:00:00.000Z',
+    assistantText: '최종 답변입니다.',
+  }));
+
+  const log = await readGjcLog(logPath);
+  assert.equal(log.gjcSessionId, sessionId);
+  assert.equal(log.threadId, sessionId);
+  assert.equal(log.startedAt, '2026-06-04T10:00:00.000Z');
+  assert.equal(log.cwd, root);
+  assert.deepEqual(log.messages.filter((message) => message.role === 'assistant').map((message) => message.phase), ['commentary', 'final_answer']);
+  assert.equal(log.messages.at(-1)?.text, '최종 답변입니다.');
+});
+
+test('gjc session discovery reads configured XDG session roots', async () => {
+  const homeRoot = await mkdtemp(join(tmpdir(), 'gjc-home-'));
+  const xdgRoot = await mkdtemp(join(tmpdir(), 'gjc-xdg-'));
+  const sessionId = '019e9000-2222-7000-bbbb-cccccccccccc';
+  const relativePath = 'project-a/2026-06-04T10-00-00-000Z_019e9000-2222-7000-bbbb-cccccccccccc.jsonl';
+
+  await writeGjcSession(join(xdgRoot, 'gjc', 'sessions'), sessionId, gjcSessionLines({
+    sessionId,
+    cwd: '/tmp/project-a',
+    startedAt: '2026-06-04T10:00:00.000Z',
+  }), { relativePath });
+
+  await withEnv({ HOME: homeRoot, XDG_DATA_HOME: xdgRoot, GJC_SESSIONS_ROOT: undefined }, async () => {
+    const paths = await listGjcSessionLogPaths();
+    assert.equal(paths.some((path) => path.endsWith('019e9000-2222-7000-bbbb-cccccccccccc.jsonl')), true);
+
+    const sessions = await buildGjcSessionIndex({ sessionScanLimit: 10 });
+    assert.equal(sessions.length, 1);
+    assert.equal(sessions[0].bridgeSessionId, sessionId);
+    assert.equal(sessions[0].status, 'unknown');
+    assert.equal(sessions[0].activityState, 'idle');
+  });
+});
+
+test('registry includes gjc sessions by default and resolves gjc identifiers', async () => {
+  const homeRoot = await mkdtemp(join(tmpdir(), 'gjc-registry-home-'));
+  const xdgRoot = await mkdtemp(join(tmpdir(), 'gjc-registry-xdg-'));
+  const projectRoot = await mkdtemp(join(tmpdir(), 'gjc-project-'));
+  const sessionId = '019e9000-3333-7000-cccc-dddddddddddd';
+
+  await writeGjcSession(join(xdgRoot, 'gjc', 'sessions'), sessionId, gjcSessionLines({
+    sessionId,
+    cwd: projectRoot,
+    startedAt: '2026-06-04T10:00:00.000Z',
+    assistantText: '작업을 마쳤습니다.',
+  }), { relativePath: `${projectRoot.split('/').pop()}/${sessionId}.jsonl` });
+
+  await withEnv({ HOME: homeRoot, XDG_DATA_HOME: xdgRoot, GJC_SESSIONS_ROOT: undefined }, async () => {
+    const sessions = await listSessions({ projectRoot, sessionScanLimit: 10 });
+    const session = sessions.find((candidate) => candidate.gjcSessionId === sessionId);
+    assert.ok(session);
+    assert.equal(session.status, 'unknown');
+    assert.equal(session.activityState, 'idle');
+    assert.equal(session.hasOmxLifecycle, false);
+    assert.equal(session.lifecycleOwner, 'gjc');
+
+    const resolved = await getSessionById(sessionId, { projectRoot, sessionScanLimit: 10 });
+    assert.equal(resolved?.bridgeSessionId, sessionId);
+    assert.equal(resolved?.gjcSessionId, sessionId);
+  });
 });
 
 test('audit log appends and filters router events', async () => {

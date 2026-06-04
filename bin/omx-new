@@ -2,43 +2,47 @@
 set -euo pipefail
 
 script_name="$(basename "$0")"
+canonical_name="tmux-new"
 project_dir="$PWD"
 session_name=""
 attach=0
 direct_mode=0
 print_json=0
 bridge_check=1
-omx_runs_dir="${OMX_RUNS_DIR:-}"
+legacy_runs_dir="${OMX_RUNS_DIR:-}"
 runs_dir_option=0
 extra_args=()
+created_session=0
+cleanup_attempted=0
+cleanup_succeeded=0
 
 usage() {
   cat <<'USAGE'
-사용법:
-  omx-new [PROJECT_DIR] [--name SESSION] [--attach] [--direct] [--json] [--runs PATH] [--no-check] [-- OMX_ARGS...]
+Usage:
+  tmux-new [PROJECT_DIR] [--name SESSION] [--attach] [--direct] [--json] [--no-check] [-- GJC_ARGS...]
+  omx-new  [same options]  # legacy compatibility shim; non-canonical on gajae-version
 
-설명:
-  기본적으로 새 OMX/Codex TUI 세션을 native tmux로 시작하고 `omx --madmax --high`를 실행합니다.
-  `--direct`/`-d` 지정 시 tmux 세션을 만들지 않고 현재 터미널에서 `omx --direct --yolo`를 실행합니다.
-  tmux 모드에서도 내부 명령에 `--tmux`를 넣지 않습니다.
-  --runs PATH를 지정하면 해당 경로를 omx 실행 로그 디렉터리로 전달합니다.
-  `--direct`와 `--disable codex_hooks`는 기본값으로 사용하지 않습니다.
-  `--direct`/`-d`는 `--attach`/`-a`, `--name`, `--json`과 함께 사용할 수 없습니다.
+Description:
+  Canonical helper on gajae-version is tmux-new.
+  This script starts a new managed GJC tmux session and verifies GJC ownership tags before success:
+    @gjc-profile=1
+    @gjc-branch
+    @gjc-branch-slug
+    @gjc-project
+  If invoked as omx-new, treat that filename as a non-canonical compatibility shim only.
+  --direct runs gjc in the current terminal instead of creating a tmux session.
+  --runs/--runs-dir is not supported on the branch-fixed gjc backend.
 
-예시:
-  omx-new ~/work/omx-notify
-  omx-new . --name omx-notify-main --attach
-  omx-new ~/work/app -d
-  omx-new ~/work/app -- --model gpt-5.5
+Examples:
+  tmux-new ~/work/hermes-tmux-bridge
+  tmux-new . --name hermes-main --attach
+  tmux-new ~/work/app -- --model sonnet
 USAGE
 }
 
-section() { printf '\n🔧 %s\n' "$*" >&2; }
-log() { printf '  • %s\n' "$*" >&2; }
-ok() { printf '✅ %s\n' "$*" >&2; }
-die() { printf '❌ %s\n' "$*" >&2; exit 1; }
-trap 'rc=$?; printf "❌ 실패: line=%s exit=%s\n" "$LINENO" "$rc" >&2; exit "$rc"' ERR
-require_cmd() { command -v "$1" >/dev/null 2>&1 || die "필요한 명령어를 찾을 수 없습니다: $1"; }
+log() { printf '%s\n' "$*" >&2; }
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+require_cmd() { command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"; }
 
 slugify() {
   local raw="$1" slug
@@ -47,7 +51,7 @@ slugify() {
 }
 
 auto_name() {
-  printf 'omx-%s-%s' "$(slugify "$(basename "$project_dir")")" "$(date +%H%M%S)"
+  printf 'gjc-%s-%s' "$(slugify "$(basename "$project_dir")")" "$(date +%H%M%S)"
 }
 
 quote_cmd() {
@@ -58,37 +62,228 @@ quote_cmd() {
   printf '%s ' "${out[@]}"
 }
 
+json_escape() {
+  local value="${1:-}"
+  value=${value//\\/\\\\}
+  value=${value//\"/\\\"}
+  value=${value//$'\n'/\\n}
+  value=${value//$'\r'/\\r}
+  value=${value//$'\t'/\\t}
+  printf '%s' "$value"
+}
+
+emit_result_json() {
+  local ok="$1"
+  local managed="$2"
+  local message="$3"
+  local command_text="$4"
+  local branch="$5"
+  local branch_slug="$6"
+  local project="$7"
+  local runs_note="$8"
+  printf '{"ok":%s,"managed":%s' "$ok" "$managed"
+  if [[ -n "$session_name" ]]; then
+    printf ',"tmuxId":"%s"' "$(json_escape "$session_name")"
+  fi
+  if [[ -n "${pane_id:-}" ]]; then
+    printf ',"tmuxPaneId":"%s"' "$(json_escape "$pane_id")"
+  fi
+  printf ',"projectDir":"%s"' "$(json_escape "$project_dir")"
+  printf ',"ownership":{"gjcProfile":"1","gjcBranch":"%s","gjcBranchSlug":"%s","gjcProject":"%s","gjcOwnerKey":"%s","gjcStartedAt":"%s"}' \
+    "$(json_escape "$branch")" "$(json_escape "$branch_slug")" "$(json_escape "$project")" "$(json_escape "$gjc_owner_key")" "$(json_escape "$gjc_started_at")"
+  if [[ -n "$command_text" ]]; then
+    printf ',"command":"%s"' "$(json_escape "$command_text")"
+  fi
+  if [[ -n "$message" ]]; then
+    if [[ "$ok" == "true" ]]; then
+      printf ',"message":"%s"' "$(json_escape "$message")"
+    else
+      printf ',"error":"%s"' "$(json_escape "$message")"
+    fi
+  fi
+  if [[ -n "$runs_note" ]]; then
+    printf ',"runsOption":"%s"' "$(json_escape "$runs_note")"
+  fi
+  printf ',"cleanupAttempted":%s,"cleanupSucceeded":%s}\n' "$cleanup_attempted" "$cleanup_succeeded"
+}
+
+session_option_value() {
+  tmux show-options -t "$1" -vq "$2" 2>/dev/null || true
+}
+
+gjc_session_roots() {
+  if [[ -n "${GJC_SESSIONS_ROOT:-}" ]]; then
+    printf '%s' "$GJC_SESSIONS_ROOT"
+    return
+  fi
+  local xdg_root="${XDG_DATA_HOME:-$HOME/.local/share}"
+  printf '%s:%s' "$HOME/.gjc/agent/sessions" "$xdg_root/gjc/sessions"
+}
+
+discover_gjc_session_id() {
+  local roots="$1"
+  GJC_SESSION_ROOTS="$roots" PROJECT_DIR="$project_dir" GJC_STARTED_AT="$gjc_started_at" node - <<'NODE'
+const fs = require('node:fs');
+const path = require('node:path');
+const roots = String(process.env.GJC_SESSION_ROOTS || '').split(path.delimiter).filter(Boolean);
+const projectDir = process.env.PROJECT_DIR || '';
+const startedAtMs = Date.parse(process.env.GJC_STARTED_AT || '');
+let best = null;
+function consider(file) {
+  let firstLine = '';
+  try {
+    firstLine = fs.readFileSync(file, 'utf8').split('\n', 1)[0];
+  } catch {
+    return;
+  }
+  if (!firstLine.trim()) return;
+  let record;
+  try {
+    record = JSON.parse(firstLine);
+  } catch {
+    return;
+  }
+  if (record?.type !== 'session' || record?.cwd !== projectDir || !record?.id) return;
+  const recordMs = Date.parse(record.timestamp || '');
+  if (Number.isFinite(startedAtMs) && Number.isFinite(recordMs) && recordMs + 30000 < startedAtMs) return;
+  let score = Number.isFinite(recordMs) ? recordMs : 0;
+  try {
+    const stat = fs.statSync(file);
+    if (!Number.isFinite(score)) score = stat.mtimeMs;
+    score = Math.max(score, stat.mtimeMs || 0);
+  } catch {}
+  if (!best || score > best.score) best = { id: record.id, score };
+}
+function walk(dir) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) walk(full);
+    else if (entry.isFile() && entry.name.endsWith('.jsonl')) consider(full);
+  }
+}
+for (const root of roots) walk(root);
+if (best?.id) process.stdout.write(best.id);
+NODE
+}
+
+wait_for_gjc_session_id() {
+  local roots="$1" target="$2"
+  local discovered_session_id=''
+  for _ in $(seq 1 40); do
+    discovered_session_id="$(discover_gjc_session_id "$roots")"
+    if [[ -n "$discovered_session_id" ]]; then
+      tmux set-option -t "$target" -q '@gjc-session-id' "$discovered_session_id"
+      printf '%s' "$discovered_session_id"
+      return 0
+    fi
+    sleep 0.25
+  done
+  return 1
+}
+
+conflicting_gjc_session_target() {
+  local session_id="$1" current_session="$2"
+  local tmux_session tagged_session_id
+  while IFS=$'\t' read -r tmux_session tagged_session_id; do
+    [[ -n "$tmux_session" ]] || continue
+    if [[ "$tagged_session_id" == "$session_id" && "$tmux_session" != "$current_session" ]]; then
+      printf '%s' "$tmux_session"
+      return 0
+    fi
+  done < <(tmux list-sessions -F '#{session_name}\t#{@gjc-session-id}' 2>/dev/null || true)
+  return 1
+}
+
+apply_gjc_tags() {
+  local target="$1" branch="$2" branch_slug="$3" project="$4" owner_key="$5" started_at="$6"
+  tmux set-option -t "$target" -q '@gjc-profile' '1'
+  tmux set-option -t "$target" -q '@gjc-branch' "$branch"
+  tmux set-option -t "$target" -q '@gjc-branch-slug' "$branch_slug"
+  tmux set-option -t "$target" -q '@gjc-project' "$project"
+  tmux set-option -t "$target" -q '@gjc-owner-key' "$owner_key"
+  tmux set-option -t "$target" -q '@gjc-started-at' "$started_at"
+}
+
+verify_gjc_tags() {
+  local target="$1" branch="$2" branch_slug="$3" project="$4" owner_key="$5" started_at="$6"
+  local actual_profile actual_branch actual_branch_slug actual_project actual_owner_key actual_started_at actual_session_id
+  actual_profile="$(session_option_value "$target" '@gjc-profile')"
+  actual_branch="$(session_option_value "$target" '@gjc-branch')"
+  actual_branch_slug="$(session_option_value "$target" '@gjc-branch-slug')"
+  actual_project="$(session_option_value "$target" '@gjc-project')"
+  actual_owner_key="$(session_option_value "$target" '@gjc-owner-key')"
+  actual_started_at="$(session_option_value "$target" '@gjc-started-at')"
+  actual_session_id="$(session_option_value "$target" '@gjc-session-id')"
+  [[ "$actual_profile" == '1' ]] || return 1
+  [[ "$actual_branch" == "$branch" ]] || return 1
+  [[ "$actual_branch_slug" == "$branch_slug" ]] || return 1
+  [[ "$actual_project" == "$project" ]] || return 1
+  [[ "$actual_owner_key" == "$owner_key" ]] || return 1
+  [[ "$actual_started_at" == "$started_at" ]] || return 1
+  [[ -n "$actual_session_id" ]] || return 1
+}
+
+cleanup_session() {
+  if [[ "$created_session" -ne 1 ]]; then
+    return 0
+  fi
+  cleanup_attempted=1
+  if tmux has-session -t "$session_name" 2>/dev/null; then
+    if tmux kill-session -t "$session_name" >/dev/null 2>&1; then
+      cleanup_succeeded=1
+      return 0
+    fi
+    cleanup_succeeded=0
+    return 1
+  fi
+  cleanup_succeeded=1
+}
+
+fail_unmanaged_session() {
+  local message="$1" branch="$2" branch_slug="$3" project="$4" command_text="$5"
+  cleanup_session || true
+  if [[ "$print_json" -eq 1 ]]; then
+    emit_result_json false false "$message" "$command_text" "$branch" "$branch_slug" "$project" "${legacy_runs_dir:+unsupported}"
+  else
+    log "canonical helper: $canonical_name"
+    log "$message"
+    if [[ "$cleanup_attempted" -eq 1 && "$cleanup_succeeded" -ne 1 ]]; then
+      log "cleanup required: unmanaged tmux session may still exist: $session_name"
+    fi
+  fi
+  exit 1
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
-    --name|-n) [[ $# -ge 2 ]] || die "--name 뒤에 세션명이 필요합니다"; session_name="$2"; shift 2 ;;
+    --name|-n) [[ $# -ge 2 ]] || die "missing session name after --name"; session_name="$2"; shift 2 ;;
     --attach|-a) attach=1; shift ;;
     --direct|-d) direct_mode=1; shift ;;
     --json) print_json=1; shift ;;
-    --runs|--runs-dir) [[ $# -ge 2 ]] || die "$1 뒤에 경로가 필요합니다"; omx_runs_dir="$2"; runs_dir_option=1; shift 2 ;;
+    --runs|--runs-dir) [[ $# -ge 2 ]] || die "missing path after $1"; legacy_runs_dir="$2"; runs_dir_option=1; shift 2 ;;
     --no-check|--no-bridge-check) bridge_check=0; shift ;;
     --) shift; extra_args=("$@"); break ;;
-    -*) die "알 수 없는 옵션: $1" ;;
+    -*) die "unknown option: $1" ;;
     *) project_dir="$1"; shift ;;
   esac
 done
 
-require_cmd omx
-
 project_dir="$(cd "$project_dir" && pwd)"
-if [[ "$runs_dir_option" -eq 1 ]]; then
-  mkdir -p "$omx_runs_dir"
-  omx_runs_dir="$(cd "$omx_runs_dir" && pwd)"
-fi
+[[ "$runs_dir_option" -eq 0 ]] || die "--runs/--runs-dir is not supported on the branch-fixed gjc backend"
+require_cmd gjc
 
 if [[ "$direct_mode" -eq 1 ]]; then
-  [[ "$attach" -eq 0 ]] || die "--direct/-d는 tmux 세션을 만들지 않으므로 --attach/-a와 함께 사용할 수 없습니다"
-  [[ "$print_json" -eq 0 ]] || die "--direct/-d는 tmux 세션 정보를 만들지 않으므로 --json과 함께 사용할 수 없습니다"
-  [[ -z "$session_name" ]] || die "--direct/-d는 tmux 세션을 만들지 않으므로 --name과 함께 사용할 수 없습니다"
-  cmd=(omx --direct --yolo)
-  if [[ -n "$omx_runs_dir" ]]; then
-    cmd=(env "OMX_RUNS_DIR=$omx_runs_dir" "${cmd[@]}")
-  fi
+  [[ "$attach" -eq 0 ]] || die "--direct/-d cannot be combined with --attach/-a"
+  [[ "$print_json" -eq 0 ]] || die "--direct/-d does not create a managed tmux session, so --json is not available"
+  [[ -z "$session_name" ]] || die "--direct/-d cannot be combined with --name"
+  cmd=(gjc)
   if [[ ${#extra_args[@]} -gt 0 ]]; then
     cmd+=("${extra_args[@]}")
   fi
@@ -99,24 +294,32 @@ fi
 require_cmd tmux
 
 session_name="${session_name:-$(auto_name)}"
-[[ "$session_name" =~ ^[[:alnum:]_.-]+$ ]] || die "유효하지 않은 tmux session 이름: $session_name"
+[[ "$session_name" =~ ^[[:alnum:]_.-]+$ ]] || die "invalid tmux session name: $session_name"
 
 if tmux has-session -t "$session_name" 2>/dev/null; then
-  die "이미 존재하는 tmux session입니다: $session_name"
+  die "tmux session already exists: $session_name"
 fi
 
-cmd=(omx --madmax --high)
-if [[ -n "$omx_runs_dir" ]]; then
-  cmd=(env "OMX_RUNS_DIR=$omx_runs_dir" "${cmd[@]}")
-fi
+gjc_branch="${GJC_TMUX_BRANCH:-gjc}"
+gjc_branch_slug="${GJC_TMUX_BRANCH_SLUG:-$(slugify "$gjc_branch")}"
+gjc_project="${GJC_TMUX_PROJECT:-$(slugify "$(basename "$project_dir")")}"
+gjc_started_at="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+gjc_owner_key="${GJC_TMUX_OWNER_KEY:-${session_name}:${gjc_started_at}}"
+gjc_session_roots_value="$(gjc_session_roots)"
+gjc_session_id=''
+cmd=(gjc)
 if [[ ${#extra_args[@]} -gt 0 ]]; then
   cmd+=("${extra_args[@]}")
 fi
-
-# Do not use `omx --tmux` here. We create the tmux session explicitly for Hermes/headless launch.
-# Inside tmux, OMX resolves to inside-tmux mode and may create only its HUD pane, not another session.
 cmd_text="exec $(quote_cmd "${cmd[@]}")"
+
 tmux new-session -d -s "$session_name" -c "$project_dir" "$cmd_text"
+created_session=1
+apply_gjc_tags "$session_name" "$gjc_branch" "$gjc_branch_slug" "$gjc_project" "$gjc_owner_key" "$gjc_started_at" || fail_unmanaged_session "failed to apply required GJC tmux ownership tags" "$gjc_branch" "$gjc_branch_slug" "$gjc_project" "${cmd[*]}"
+gjc_session_id="$(wait_for_gjc_session_id "$gjc_session_roots_value" "$session_name")" || fail_unmanaged_session "failed to discover and stamp the GJC session id for the managed tmux session" "$gjc_branch" "$gjc_branch_slug" "$gjc_project" "${cmd[*]}"
+conflicting_session="$(conflicting_gjc_session_target "$gjc_session_id" "$session_name")"
+[[ -z "$conflicting_session" ]] || fail_unmanaged_session "discovered GJC session id is already tagged on another managed tmux session: $conflicting_session" "$gjc_branch" "$gjc_branch_slug" "$gjc_project" "${cmd[*]}"
+verify_gjc_tags "$session_name" "$gjc_branch" "$gjc_branch_slug" "$gjc_project" "$gjc_owner_key" "$gjc_started_at" || fail_unmanaged_session "tmux session failed GJC ownership verification; refusing to report it as managed" "$gjc_branch" "$gjc_branch_slug" "$gjc_project" "${cmd[*]}"
 
 sleep 1
 pane_id="$(tmux list-panes -t "$session_name" -F '#{pane_id}' | head -n 1)"
@@ -129,23 +332,15 @@ if [[ "$bridge_check" -eq 1 ]]; then
 fi
 
 if [[ "$print_json" -eq 1 ]]; then
-  if command -v jq >/dev/null 2>&1; then
-    jq -n --arg session "$session_name" --arg pane "$pane_id" --arg dir "$project_dir" --arg runsDir "$omx_runs_dir" --arg command "${cmd[*]}" \
-      '{ok:true, tmuxId:$session, tmuxPaneId:$pane, projectDir:$dir, command:$command} + (if $runsDir == "" then {} else {omxRunsDir:$runsDir} end)'
-  else
-    if [[ -n "$omx_runs_dir" ]]; then
-      printf '{"ok":true,"tmuxId":"%s","tmuxPaneId":"%s","projectDir":"%s","omxRunsDir":"%s"}\n' "$session_name" "$pane_id" "$project_dir" "$omx_runs_dir"
-    else
-      printf '{"ok":true,"tmuxId":"%s","tmuxPaneId":"%s","projectDir":"%s"}\n' "$session_name" "$pane_id" "$project_dir"
-    fi
-  fi
+  emit_result_json true true "managed GJC tmux session created" "${cmd[*]}" "$gjc_branch" "$gjc_branch_slug" "$gjc_project" ""
 else
-  ok "시작 완료: $session_name ($pane_id)"
-  log "프로젝트: $project_dir"
-  if [[ -n "$omx_runs_dir" ]]; then
-    log "omx 실행 로그: $omx_runs_dir"
+  log "managed GJC tmux session created: $session_name ($pane_id)"
+  log "canonical helper: $canonical_name"
+  if [[ "$script_name" != "$canonical_name" ]]; then
+    log "legacy shim in use: $script_name is non-canonical on gajae-version"
   fi
-  log "실행 명령: ${cmd[*]}"
+  log "project: $project_dir"
+  log "command: ${cmd[*]}"
   log "bridge endpoint: ${OMX_BRIDGE_URL:-http://127.0.0.1:3037}/sessions"
 fi
 

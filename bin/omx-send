@@ -2,10 +2,12 @@
 set -euo pipefail
 
 script_name="$(basename "$0")"
+canonical_name="tmux-send"
 bridge_url="${OMX_BRIDGE_URL:-http://127.0.0.1:3037}"
 token="${OMX_BRIDGE_TOKEN:-}"
 session_id=""
 project=""
+tmux_target=""
 mode="auto"
 dry_run=0
 submit=1
@@ -17,48 +19,72 @@ edit_text=""
 list_only=0
 command_text=""
 session_list_limit="${OMX_SEND_SESSION_LIST_LIMIT:-50}"
+managed_session_name=""
+managed_pane_id=""
+managed_project=""
 
 usage() {
   cat <<'USAGE'
-사용법:
-  omx-send --session SESSION_ID [--mode auto|tmux|codex] [--dry] [--hold] [--raw] PROMPT
-  omx-send --session SESSION_ID --discord-approval PROMPT
-  omx-send --session SESSION_ID --answer-approval send|reject --question-id QUESTION_ID
-  omx-send --session SESSION_ID --answer-approval modify --question-id QUESTION_ID --edit TEXT
-  omx-send --project PROJECT PROMPT
-  omx-send --list
+Usage:
+  tmux-send --session SESSION_ID [--mode auto|tmux|codex] [--dry] [--hold] [--raw] PROMPT
+  tmux-send --project PROJECT PROMPT
+  tmux-send --tmux TMUX_TARGET [--dry] [--hold] PROMPT
+  tmux-send --session SESSION_ID --discord-approval PROMPT
+  tmux-send --session SESSION_ID --answer-approval send|reject --question-id QUESTION_ID
+  tmux-send --session SESSION_ID --answer-approval modify --question-id QUESTION_ID --edit TEXT
+  tmux-send --list
+  omx-send  [same options]  # legacy compatibility shim; non-canonical on gajae-version
 
---list 출력 컬럼:
+--list columns:
   bridgeSessionId, project, activityState, status, tmuxId, lastEventAt
 
-설명:
-  hermes-omx-notify HTTP API로 OMX/Codex 세션에 지시를 보냅니다.
-  기본 mode는 auto이며, live tmux 화면에 반드시 보여야 하면 --mode tmux를 사용합니다.
-  기본적으로 Hermes/operator wrapper와 전달 prefix를 제거합니다.
-  byte-for-byte에 가까운 전달이 필요할 때만 --raw/--no-normalize를 사용합니다.
-  Discord Hermes에서 전송 전 승인 UI가 필요하면 --discord-approval을 사용합니다.
-  승인 UI 응답은 --answer-approval로 /question-answers에 제출합니다.
-
-환경변수:
-  OMX_BRIDGE_URL    기본 http://127.0.0.1:3037
-  OMX_BRIDGE_TOKEN  설정된 경우 Authorization Bearer로 전송
-  OMX_SEND_SESSION_LIST_LIMIT  --list/--project 세션 조회 제한 (기본 50, all 허용)
-
-옵션:
-  --url URL      bridge URL 변경
-  --token TOKEN  Authorization Bearer token
-  --limit N      --list/--project 세션 조회 제한
-  --approval-gate GATE  승인 gate 지정 (지원: discord-hermes-omx-send)
-  --discord-approval    --approval-gate discord-hermes-omx-send 축약형
-  --answer-approval ACTION  승인 응답 제출: send|reject|modify
-  --question-id ID          승인 question id
-  --edit TEXT               modify 응답의 추가수정 텍스트
+Description:
+  Canonical helper on gajae-version is tmux-send.
+  Bridge mode sends follow-up commands through the bridge API.
+  Direct --tmux mode is managed-only: it rejects untagged tmux targets and requires
+  @gjc-profile=1, @gjc-branch=gjc, @gjc-branch-slug, and @gjc-project before dispatch.
+  If invoked as omx-send, treat that filename as a non-canonical compatibility shim only.
 USAGE
 }
 
-die() { printf '❌ %s\n' "$*" >&2; exit 1; }
-trap 'rc=$?; printf "❌ 실패: line=%s exit=%s\n" "$LINENO" "$rc" >&2; exit "$rc"' ERR
-require_cmd() { command -v "$1" >/dev/null 2>&1 || die "필요한 명령어를 찾을 수 없습니다: $1"; }
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+require_cmd() { command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"; }
+
+slugify() {
+  local raw="$1" slug
+  slug="$(printf '%s' "$raw" | tr -cs '[:alnum:]_.-' '-' | sed 's/^-*//; s/-*$//')"
+  printf '%s' "${slug:-project}"
+}
+
+load_managed_tmux_target() {
+  local target="$1" raw expected_slug
+  managed_error="tmux target not found or not addressable: $target"
+  raw="$(tmux display-message -p -t "$target" '#{session_name}	#{pane_id}	#{@gjc-profile}	#{@gjc-branch}	#{@gjc-branch-slug}	#{@gjc-project}	#{@gjc-owner-key}	#{@gjc-started-at}	#{@gjc-session-id}' 2>/dev/null)" || return 1
+  IFS=$'\t' read -r managed_session_name managed_pane_id managed_gjc_profile managed_gjc_branch managed_gjc_branch_slug managed_project managed_gjc_owner_key managed_gjc_started_at managed_gjc_session_id <<<"$raw"
+  [[ "$managed_gjc_profile" == '1' ]] || { managed_error="unmanaged tmux target: missing @gjc-profile=1"; return 1; }
+  [[ "$managed_gjc_branch" == 'gjc' ]] || { managed_error="unmanaged tmux target: expected @gjc-branch=gjc, got ${managed_gjc_branch:-<empty>}"; return 1; }
+  expected_slug="$(slugify "$managed_gjc_branch")"
+  [[ "$managed_gjc_branch_slug" == "$expected_slug" ]] || { managed_error="unmanaged tmux target: expected @gjc-branch-slug=$expected_slug, got ${managed_gjc_branch_slug:-<empty>}"; return 1; }
+  [[ -n "$managed_project" ]] || { managed_error='unmanaged tmux target: missing @gjc-project'; return 1; }
+  [[ -n "$managed_gjc_owner_key" ]] || { managed_error='unmanaged tmux target: missing @gjc-owner-key'; return 1; }
+  [[ -n "$managed_gjc_started_at" ]] || { managed_error='unmanaged tmux target: missing @gjc-started-at'; return 1; }
+  [[ -n "$managed_gjc_session_id" ]] || { managed_error='unmanaged tmux target: missing @gjc-session-id'; return 1; }
+}
+
+send_direct_tmux() {
+  local target="$1" safe_text="$2" json_target
+  load_managed_tmux_target "$target" || die "$managed_error"
+  json_target="${managed_pane_id:-$managed_session_name}"
+  if [[ "$dry_run" -eq 1 ]]; then
+    jq -n --arg target "$json_target" --arg tmuxId "$managed_session_name" --arg tmuxPaneId "$managed_pane_id" --arg project "$managed_project" --arg text "$safe_text" --argjson submit "$([[ "$submit" -eq 1 ]] && printf true || printf false)" '{ok:true, backend:"tmux", dryRun:true, managed:true, target:$target, tmuxId:$tmuxId, tmuxPaneId:$tmuxPaneId, gjcProject:$project, commandText:$text, submit:$submit}'
+    return 0
+  fi
+  tmux send-keys -t "$json_target" -l -- "$safe_text"
+  if [[ "$submit" -eq 1 ]]; then
+    tmux send-keys -t "$json_target" Enter
+  fi
+  jq -n --arg target "$json_target" --arg tmuxId "$managed_session_name" --arg tmuxPaneId "$managed_pane_id" --arg project "$managed_project" --argjson submit "$([[ "$submit" -eq 1 ]] && printf true || printf false)" '{ok:true, backend:"tmux", managed:true, target:$target, tmuxId:$tmuxId, tmuxPaneId:$tmuxPaneId, gjcProject:$project, submit:$submit}'
+}
 
 auth_args=()
 if [[ -n "$token" ]]; then
@@ -68,60 +94,73 @@ fi
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage; exit 0 ;;
-    --url|--bridge-url) [[ $# -ge 2 ]] || die "$1 뒤에 URL이 필요합니다"; bridge_url="$2"; shift 2 ;;
-    --token) [[ $# -ge 2 ]] || die "--token 뒤에 token이 필요합니다"; token="$2"; auth_args=(-H "Authorization: Bearer $token"); shift 2 ;;
-    --session|-s) [[ $# -ge 2 ]] || die "--session 뒤에 id가 필요합니다"; session_id="$2"; shift 2 ;;
-    --project|-p) [[ $# -ge 2 ]] || die "--project 뒤에 프로젝트명이 필요합니다"; project="$2"; shift 2 ;;
-    --mode|-m) [[ $# -ge 2 ]] || die "--mode 뒤에 값이 필요합니다"; mode="$2"; shift 2 ;;
+    --url|--bridge-url) [[ $# -ge 2 ]] || die "missing URL after $1"; bridge_url="$2"; shift 2 ;;
+    --token) [[ $# -ge 2 ]] || die "missing token after --token"; token="$2"; auth_args=(-H "Authorization: Bearer $token"); shift 2 ;;
+    --session|-s) [[ $# -ge 2 ]] || die "missing id after --session"; session_id="$2"; shift 2 ;;
+    --project|-p) [[ $# -ge 2 ]] || die "missing project after --project"; project="$2"; shift 2 ;;
+    --tmux|--tmux-id) [[ $# -ge 2 ]] || die "missing tmux target after $1"; tmux_target="$2"; shift 2 ;;
+    --mode|-m) [[ $# -ge 2 ]] || die "missing value after --mode"; mode="$2"; shift 2 ;;
     --dry|--dry-run) dry_run=1; shift ;;
     --hold|--no-submit) submit=0; shift ;;
     --raw|--no-normalize|--preserve-raw) normalize=0; shift ;;
     --normalize) normalize=1; shift ;;
-    --approval-gate) [[ $# -ge 2 ]] || die "--approval-gate 뒤에 값이 필요합니다"; approval_gate="$2"; shift 2 ;;
+    --approval-gate) [[ $# -ge 2 ]] || die "missing value after --approval-gate"; approval_gate="$2"; shift 2 ;;
     --discord-approval) approval_gate="discord-hermes-omx-send"; shift ;;
-    --answer-approval|--approval-answer) [[ $# -ge 2 ]] || die "$1 뒤에 send|reject|modify 값이 필요합니다"; approval_answer="$2"; shift 2 ;;
-    --question-id) [[ $# -ge 2 ]] || die "--question-id 뒤에 id가 필요합니다"; question_id="$2"; shift 2 ;;
-    --edit|--other-text) [[ $# -ge 2 ]] || die "$1 뒤에 추가수정 텍스트가 필요합니다"; edit_text="$2"; shift 2 ;;
+    --answer-approval|--approval-answer) [[ $# -ge 2 ]] || die "missing send|reject|modify after $1"; approval_answer="$2"; shift 2 ;;
+    --question-id) [[ $# -ge 2 ]] || die "missing id after --question-id"; question_id="$2"; shift 2 ;;
+    --edit|--other-text) [[ $# -ge 2 ]] || die "missing text after $1"; edit_text="$2"; shift 2 ;;
     --list) list_only=1; shift ;;
-    --limit) [[ $# -ge 2 ]] || die "--limit 뒤에 값이 필요합니다"; session_list_limit="$2"; shift 2 ;;
+    --limit) [[ $# -ge 2 ]] || die "missing value after --limit"; session_list_limit="$2"; shift 2 ;;
     --) shift; command_text="$*"; break ;;
-    -*) die "알 수 없는 옵션: $1" ;;
+    -*) die "unknown option: $1" ;;
     *) command_text="${command_text:+$command_text }$1"; shift ;;
   esac
 done
 
-require_cmd curl
 require_cmd jq
-[[ "$mode" =~ ^(auto|tmux|codex)$ ]] || die "mode는 auto|tmux|codex 중 하나여야 합니다"
-if [[ -n "$approval_gate" && "$approval_gate" != "discord-hermes-omx-send" ]]; then
-  die "approval gate는 discord-hermes-omx-send만 지원합니다"
+[[ "$mode" =~ ^(auto|tmux|codex)$ ]] || die 'mode must be one of auto|tmux|codex'
+if [[ -n "$approval_gate" && "$approval_gate" != 'discord-hermes-omx-send' ]]; then
+  die 'approval gate must be discord-hermes-omx-send'
 fi
 if [[ -n "$approval_answer" && ! "$approval_answer" =~ ^(send|reject|modify)$ ]]; then
-  die "--answer-approval은 send|reject|modify 중 하나여야 합니다"
+  die '--answer-approval must be one of send|reject|modify'
 fi
 
+if [[ -n "$tmux_target" ]]; then
+  [[ "$list_only" -eq 0 ]] || die '--list cannot be combined with --tmux'
+  [[ -z "$session_id" && -z "$project" ]] || die '--tmux cannot be combined with --session or --project'
+  [[ -z "$approval_gate" && -z "$approval_answer" && -z "$question_id" && -z "$edit_text" ]] || die '--tmux does not support bridge approval flows'
+  [[ "$mode" != 'codex' ]] || die '--tmux direct dispatch does not support --mode codex'
+  [[ -n "$command_text" ]] || die 'PROMPT is required'
+  require_cmd tmux
+  send_direct_tmux "$tmux_target" "$command_text"
+  exit 0
+fi
+
+require_cmd curl
+
 if [[ "$list_only" -eq 1 ]]; then
-  sessions_json="$(curl -fsS "${auth_args[@]}" "$bridge_url/sessions?activity=false&limit=$session_list_limit")"
+  sessions_json="$(curl -fsS "${auth_args[@]}" "$bridge_url/sessions?limit=$session_list_limit")"
   jq -r '.sessions[] | [.bridgeSessionId, .project, (.activityState // .activity.state // "unknown"), .status, (.tmuxId // ""), (.lastEventAt // .startedAt // "")] | @tsv' <<<"$sessions_json"
   exit 0
 fi
 
 if [[ -z "$session_id" ]]; then
   if [[ -z "$project" ]]; then
-    die "--session 또는 --project가 필요합니다"
+    die '--session, --project, or --tmux is required'
   fi
   sessions_json="$(curl -fsS "${auth_args[@]}" "$bridge_url/sessions?activity=false&limit=$session_list_limit")"
-  session_id="$(jq -r --arg project "$project" '[.sessions[] | select(.project==$project and .status!="ended")] | sort_by(.lastEventAt // .startedAt // "") | reverse | .[0].bridgeSessionId // empty' <<<"$sessions_json")"
-  [[ -n "$session_id" ]] || die "활성 bridge session을 찾지 못했습니다: project=$project"
+  session_id="$(jq -r --arg project "$project" '[.sessions[] | select(.project==$project and (.status=="active" or .tmuxId != null))] | sort_by(.lastEventAt // .startedAt // "") | reverse | .[0].bridgeSessionId // empty' <<<"$sessions_json")"
+  [[ -n "$session_id" ]] || die "failed to find active bridge session for project=$project"
 fi
 
 if [[ -n "$approval_answer" ]]; then
-  [[ -n "$question_id" ]] || die "--answer-approval에는 --question-id가 필요합니다"
-  if [[ "$approval_answer" == "modify" && -z "$edit_text" && -n "$command_text" ]]; then
+  [[ -n "$question_id" ]] || die '--answer-approval requires --question-id'
+  if [[ "$approval_answer" == 'modify' && -z "$edit_text" && -n "$command_text" ]]; then
     edit_text="$command_text"
   fi
-  if [[ "$approval_answer" == "modify" && -z "$edit_text" ]]; then
-    die "modify 응답에는 --edit TEXT 또는 positional TEXT가 필요합니다"
+  if [[ "$approval_answer" == 'modify' && -z "$edit_text" ]]; then
+    die 'modify requires --edit TEXT or positional TEXT'
   fi
 
   case "$approval_answer" in
@@ -143,7 +182,7 @@ if [[ -n "$approval_answer" ]]; then
   exit 0
 fi
 
-[[ -n "$command_text" ]] || die "PROMPT가 필요합니다"
+[[ -n "$command_text" ]] || die 'PROMPT is required'
 
 dry_json=false
 submit_json=true

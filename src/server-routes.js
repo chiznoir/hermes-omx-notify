@@ -1,7 +1,8 @@
 import { latestAssistantMessage, readCodexLog } from './codex-log.js';
+import { latestGjcAssistantMessage, readGjcLog } from './gjc-log.js';
 import { buildInteractions, recordCommand } from './interactions.js';
 import { latestQuestionRequest, recordQuestionAnswer, recordQuestionRequest } from './question-answers.js';
-import { sendToTmux, targetForSession } from './tmux.js';
+import { isManagedTmuxTarget, sendToTmux, targetForSession } from './tmux.js';
 import { getSessionById, listSessions } from './control-plane/registry.js';
 import { appendAudit, readAuditLog } from './control-plane/audit-log.js';
 import { decideBackend, normalizeCommandMode } from './control-plane/policy.js';
@@ -76,12 +77,14 @@ async function readJsonBody(req) {
 function publicSession(session) {
   return {
     bridgeSessionId: session.bridgeSessionId,
+    gjcSessionId: session.gjcSessionId || null,
     codexThreadId: session.codexThreadId,
     codexSessionId: session.codexSessionId,
     threadId: session.threadId || null,
     tmuxId: session.tmuxId,
     project: session.project,
     kind: session.kind,
+    backend: session.backend || null,
     status: session.status,
     startedAt: session.startedAt,
     lastEventAt: session.lastEventAt,
@@ -140,24 +143,27 @@ function latestSignal(signals = []) {
     })[0] || null;
 }
 
-async function sessionActivity(session = {}) {
-  if (session.status === 'ended') {
-    return {
-      state: 'ended',
-      latestEventType: 'SessionEnd',
-      latestAt: session.endedAt || session.lastEventAt || null,
-      source: 'session-index',
-    };
+async function readSessionLog(session = {}) {
+  if (!session.sessionLogPath) return null;
+  if (session.backend === 'gjc' || session.gjcSessionId) return readGjcLog(session.sessionLogPath);
+  return readCodexLog(session.sessionLogPath);
+}
+
+function gjcSignals(log = {}) {
+  const signals = [];
+  for (const message of log.messages || []) {
+    if (message.role === 'user') {
+      signals.push({ state: 'working', latestEventType: 'CommandSubmitted', timestamp: message.timestamp });
+    } else if (message.role === 'assistant' && message.phase === 'final_answer') {
+      signals.push({ state: 'idle', lastSignal: 'final', latestEventType: 'SessionIdle', timestamp: message.timestamp });
+    } else if (message.role === 'assistant' && (message.stopReason === 'toolUse' || message.hasToolCall || message.hasThinking || message.phase === 'commentary')) {
+      signals.push({ state: 'working', latestEventType: 'Commentary', timestamp: message.timestamp });
+    }
   }
-  if (!session.sessionLogPath) {
-    return {
-      state: session.status === 'active' ? 'unknown' : (session.status || 'unknown'),
-      latestEventType: null,
-      latestAt: session.lastEventAt || session.startedAt || null,
-      source: null,
-    };
-  }
-  const log = await readCodexLog(session.sessionLogPath);
+  return signals;
+}
+
+function codexSignals(log = {}) {
   const signals = [];
   for (const event of log.events || []) {
     if (event.type === 'ask_permission') {
@@ -179,13 +185,35 @@ async function sessionActivity(session = {}) {
       signals.push({ state: 'working', latestEventType: 'Commentary', timestamp: message.timestamp });
     }
   }
+  return signals;
+}
+
+async function sessionActivity(session = {}) {
+  if (session.status === 'ended') {
+    return {
+      state: 'ended',
+      latestEventType: 'SessionEnd',
+      latestAt: session.endedAt || session.lastEventAt || null,
+      source: 'session-index',
+    };
+  }
+  if (!session.sessionLogPath) {
+    return {
+      state: session.status === 'active' ? 'unknown' : (session.status || 'unknown'),
+      latestEventType: null,
+      latestAt: session.lastEventAt || session.startedAt || null,
+      source: null,
+    };
+  }
+  const log = await readSessionLog(session);
+  const signals = session.backend === 'gjc' || session.gjcSessionId ? gjcSignals(log) : codexSignals(log);
   const latest = latestSignal(signals);
   if (!latest) {
     return {
       state: session.status === 'active' ? 'unknown' : (session.status || 'unknown'),
       latestEventType: null,
       latestAt: session.lastEventAt || session.startedAt || null,
-      source: 'codex-log',
+      source: session.backend === 'gjc' || session.gjcSessionId ? 'gjc-log' : 'codex-log',
     };
   }
   const lastFinal = latestSignal(signals.filter((signal) => signal.state === 'final' || signal.lastSignal === 'final'));
@@ -199,7 +227,7 @@ async function sessionActivity(session = {}) {
     lastFinalAt: lastFinal?.timestamp || null,
     lastAskAt: lastAsk?.timestamp || null,
     lastPromptAt: lastPrompt?.timestamp || null,
-    source: 'codex-log',
+    source: session.backend === 'gjc' || session.gjcSessionId ? 'gjc-log' : 'codex-log',
   };
 }
 
@@ -213,7 +241,49 @@ async function publicSessionWithActivity(session) {
   };
 }
 
+function gjcSessionEvents(session = {}, log = {}) {
+  const events = [];
+  for (const message of log.messages || []) {
+    if (message.role === 'user' && message.text) {
+      events.push({
+        eventId: `${session.bridgeSessionId || session.gjcSessionId}:${message.id}`,
+        type: 'CommandSubmitted',
+        source: 'gjc-log',
+        timestamp: message.timestamp,
+        text: message.text,
+        backend: 'gjc-jsonl',
+      });
+      continue;
+    }
+    if (message.role === 'assistant' && message.phase === 'final_answer' && message.text) {
+      events.push({
+        eventId: `${session.bridgeSessionId || session.gjcSessionId}:${message.id}`,
+        type: 'FinalAnswer',
+        source: 'gjc-log',
+        timestamp: message.timestamp,
+        text: message.text,
+        backend: 'gjc-jsonl',
+        phase: 'final_answer',
+      });
+      events.push({
+        eventId: `${session.bridgeSessionId || session.gjcSessionId}:${message.id}:idle`,
+        type: 'SessionIdle',
+        source: 'gjc-log',
+        timestamp: message.timestamp,
+        text: '작업 완료. 다음 지시를 기다리는 상태입니다.',
+        backend: 'gjc-jsonl',
+        phase: 'idle',
+      });
+    }
+  }
+  return events.sort((left, right) => Date.parse(left.timestamp || 0) - Date.parse(right.timestamp || 0));
+}
+
 async function sessionEvents(session, options = {}) {
+  if (session.backend === 'gjc' || session.gjcSessionId) {
+    const log = await readSessionLog(session);
+    return gjcSessionEvents(session, log);
+  }
   return routeSessionEvents(session, options);
 }
 
@@ -221,8 +291,10 @@ async function latestIdle(session) {
   if (!session.sessionLogPath) {
     return { timestamp: null, fullText: '', truncated: false, sourceLogPath: null };
   }
-  const log = await readCodexLog(session.sessionLogPath);
-  const latest = latestAssistantMessage(log);
+  const log = await readSessionLog(session);
+  const latest = session.backend === 'gjc' || session.gjcSessionId
+    ? latestGjcAssistantMessage(log)
+    : latestAssistantMessage(log);
   return {
     timestamp: latest?.timestamp || null,
     fullText: latest?.text || '',
@@ -279,6 +351,33 @@ function commandNormalizationMetadata(normalization = {}) {
   };
 }
 
+function slugifyTmuxToken(value) {
+  return (String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || 'project');
+}
+
+function validateManagedGjcTarget(session = {}, target) {
+  if (!(session.backend === 'gjc' || session.gjcSessionId)) return { ok: true };
+  if (!target) {
+    return { ok: false, reason: 'missing-managed-gjc-target', error: 'managed gjc tmux target unavailable for session' };
+  }
+  const expectations = {
+    branch: session.gjcBranch || 'gjc',
+    branchSlug: session.gjcBranchSlug || slugifyTmuxToken(session.gjcBranch || 'gjc'),
+    project: session.gjcProject || slugifyTmuxToken(session.project || session.cwd || 'project'),
+    ownerKey: session.gjcOwnerKey || undefined,
+    startedAt: session.gjcStartedAt || undefined,
+    sessionId: session.gjcSessionTag || session.gjcSessionId || undefined,
+  };
+  if (!isManagedTmuxTarget(target, expectations)) {
+    return { ok: false, reason: 'unmanaged-gjc-target', error: 'managed gjc tmux target required for session' };
+  }
+  return { ok: true, expectations };
+}
+
 async function dispatchCommand({ session, body, commandText, interaction, projectRoot, lockManager, commandMetadata }) {
   const command = {
     mode: normalizeCommandMode(body.mode),
@@ -323,11 +422,17 @@ async function dispatchCommand({ session, body, commandText, interaction, projec
   try {
     const backend = decision.backend;
     const reason = decision.reason;
+    const target = targetForSession(session);
+    const managedTarget = validateManagedGjcTarget(session, target);
+    if (!managedTarget.ok) {
+      const delivery = { ok: false, backend: 'tmux', reason: managedTarget.reason, error: managedTarget.error, target };
+      await appendAudit('command.failed', { ...auditBase, backend: delivery.backend, delivery, error: delivery.error }, { projectRoot });
+      return { status: 409, interaction, delivery };
+    }
     let delivery;
     if (command.dryRun) {
-      delivery = { ok: true, dryRun: true, backend, reason };
+      delivery = { ok: true, dryRun: true, backend, reason, target };
     } else {
-      const target = targetForSession(session);
       delivery = {
         ...sendToTmux(target, commandText, { submit: !isFalseyBodyValue(body.submit) }),
         backend: 'tmux',

@@ -3,15 +3,15 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Install hermes-omx-notify helper CLIs onto PATH.
+Install canonical gajae-version tmux helper CLIs onto PATH.
 
 Usage:
   scripts/install-omx-cli.sh [options]
 
 Installs:
-  omx-new   Start a visible OMX/Codex tmux session
-  omx-send  Send follow-up commands through the bridge API
-  omx-kill  Stop the tmux session referenced by a bridge session
+  tmux-new   Start a managed GJC tmux session
+  tmux-send  Send follow-up commands through the bridge API or managed tmux targets
+  tmux-kill  Stop a managed GJC tmux session
 
 Options:
   --dir PATH          Target bin directory (default: $OMX_CLI_INSTALL_DIR or ~/.local/bin)
@@ -23,7 +23,8 @@ Options:
   -h, --help          Show help
 
 Notes:
-  - This installer only manages omx-new, omx-send, and omx-kill.
+  - This installer manages only canonical tmux-new, tmux-send, and tmux-kill.
+  - Repository bin/omx-* files remain non-canonical compatibility shims on this branch.
   - It does not install or modify Codex global hooks.
   - Keep the target directory on PATH for Hermes/Gateway workers.
 USAGE
@@ -37,7 +38,7 @@ copy_mode=0
 force=0
 uninstall=0
 dry_run=0
-tools=(omx-new omx-send omx-kill)
+tools=(tmux-new tmux-send tmux-kill)
 
 log() { printf '%s\n' "$*"; }
 die() { echo "$script_name: $*" >&2; exit 1; }
@@ -53,8 +54,20 @@ path_contains_dir() {
   case ":$PATH:" in *":$dir:"*) return 0 ;; *) return 1 ;; esac
 }
 
+source_tool_for() {
+  case "$1" in
+    tmux-new) printf 'omx-new' ;;
+    tmux-send) printf 'omx-send' ;;
+    tmux-kill) printf 'omx-kill' ;;
+    *) return 1 ;;
+  esac
+}
+
 install_tool() {
-  local tool="$1" src="$repo_root/bin/$tool" dst="$target_dir/$tool" current_target=""
+  local tool="$1" source_tool src dst current_target=""
+  source_tool="$(source_tool_for "$tool")" || die "unknown tool mapping: $tool"
+  src="$repo_root/bin/$source_tool"
+  dst="$target_dir/$tool"
   [[ -x "$src" ]] || die "missing executable source: $src"
 
   if [[ "$dry_run" == "1" ]]; then
@@ -93,7 +106,10 @@ install_tool() {
 }
 
 uninstall_tool() {
-  local tool="$1" src="$repo_root/bin/$tool" dst="$target_dir/$tool" current_target=""
+  local tool="$1" source_tool src dst current_target=""
+  source_tool="$(source_tool_for "$tool")" || die "unknown tool mapping: $tool"
+  src="$repo_root/bin/$source_tool"
+  dst="$target_dir/$tool"
   if [[ "$dry_run" == "1" ]]; then
     log "DRY-RUN: remove repository-managed '$dst' if present"
     return 0

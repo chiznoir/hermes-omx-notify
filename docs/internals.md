@@ -39,7 +39,7 @@ Discord-originated reply dispatch의 prompt refinement 규칙은 `skills/omx-sen
 3. 의미 보존형 실행 지시로 짧게 정제합니다.
 4. 사용자가 말하지 않은 요구, 파일, 기능, 검증 단계를 추가하지 않습니다.
 
-`omx-send --discord-approval`은 bridge-managed approval question을 만들 뿐입니다. Discord 버튼/선택 UI는 Hermes `clarify`/AskUserQuestion 렌더링이 별도로 필요합니다.
+`tmux-send --discord-approval`은 bridge-managed approval question을 만들 뿐입니다. Discord 버튼/선택 UI는 Hermes `clarify`/AskUserQuestion 렌더링이 별도로 필요합니다.
 
 ## Hermes allowlist repair
 
@@ -49,8 +49,8 @@ Discord-originated reply dispatch의 prompt refinement 규칙은 `skills/omx-sen
 
 OMX notify rename 이후 특히 아래를 봅니다.
 
-- `omx-new`가 `omx --madmax --high` 기반 tmux session과 OMX lifecycle evidence를 유지하는지.
-- `omx-send`/`omx-kill`이 raw tmux fallback 없이 bridge API/audit path를 사용하는지.
+- `tmux-new`가 `gjc` 기반 managed tmux session을 만들고 `@gjc-*` ownership tag를 검증하는지.
+- `tmux-send`/`tmux-kill`이 raw tmux fallback 없이 bridge API/audit path를 사용하는지.
 - `SessionStart` 알림 본문을 새 session trigger로 오해하지 않는지.
 - `/new`/`/resume`이 기존 pane에 들어가는 Codex slash command로 보존되는지.
 - session thread 생성 실패가 project channel silent fallback으로 숨지 않는지.
@@ -61,7 +61,7 @@ OMX notify rename 이후 특히 아래를 봅니다.
 
 ```bash
 find src test -name '*.js' -print0 | xargs -0 -n1 node --check
-bash -n bin/omx-new bin/omx-send bin/omx-kill scripts/*.sh bin/install.sh
+bash -n bin/tmux-new bin/tmux-send bin/tmux-kill scripts/*.sh bin/install.sh
 npm test
 git grep -n '<legacy-name-or-private-secret-pattern>' -- .
 ```

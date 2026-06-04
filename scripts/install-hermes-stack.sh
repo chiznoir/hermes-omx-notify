@@ -14,7 +14,7 @@ Interactive mode asks for the fallback Discord channel and optional project
 channel mappings. Pass flags only for automation/non-interactive installs.
 
 What it does:
-  1. installs omx-new/omx-send/omx-kill helper CLIs from this repository
+  1. installs tmux-new/tmux-send/tmux-kill helper CLIs from this repository
   2. installs the Hermes skill
   3. installs/restarts the bridge systemd service for Hermes agent bridge access
   4. optionally enables the Hermes Gateway webhook sink when --webhook is passed
@@ -29,7 +29,7 @@ Options:
   --cli-dir PATH                 Install helper CLIs here (default: ~/.local/bin)
   --copy-cli                     Copy helper CLIs instead of symlinking them
   --no-force-cli                 Do not replace existing helper CLI targets
-  --skip-cli                     Do not install omx-new/omx-send/omx-kill
+  --skip-cli                     Do not install tmux-new/tmux-send/tmux-kill
   --bridge-host HOST             Bridge bind host (default: 127.0.0.1)
   --bridge-port PORT             Bridge port (default: 3037)
   --webhook                      Enable Hermes Gateway webhook sink and subscription (default: off)
@@ -393,7 +393,7 @@ NODE
 subscription_prompt() {
   cat <<'PROMPT'
 OMX/Codex Discord 알림·제어 라우터.
-라우팅: reply의 “이 세션/이거/방금 알림”은 payload `bridge_session_id`. 최우선 dispatch: Discord reply에서 `전달`/`보내`/`넘겨`/`세션에 넣어`면 설명/조회하지 말고 정제 후 `omx-send --session <bridge_session_id> --discord-approval`; 반영/수정/재시도/진행/계속/위 내용/답장/고쳐는 “전달해” 없어도 정제 후 `omx-send --discord-approval`. 이 gate는 bridge pending approval만 만들며 Discord 버튼을 자동 렌더링하지 않는다. `delivery.status=approval-pending`이면 반드시 Hermes native `clarify`/AskUserQuestion으로 정제 prompt와 선택지 `전송`, `거절`, `추가수정`을 표시한 뒤, 선택 결과를 `omx-send --session <bridge_session_id> --answer-approval send|reject --question-id <questionId>`로 제출하고, 추가수정은 편집 문구를 받은 뒤 `--answer-approval modify --question-id <questionId> --edit <text>`로 기존 pending을 닫고 재정제한다. `clarify` 성공 전에는 “승인 요청 올려뒀다/버튼에서 전송 누르면 된다”고 말하지 말고, 실패 시 approval UI 실패를 명시한다. 추가수정은 재정제 후 새 approval을 만든다. Discord-origin이 아닌 명시적 local/manual helper dispatch만 plain `omx-send --session <bridge_session_id>` 가능. “이건 뭐냐/궁금한데/왜 그래?”는 dispatch 단어가 없을 때만 읽고 설명. 종료/kill은 `omx-kill` skill; 새 세션은 `omx-new` skill; dispatch는 `omx-send` skill; `SessionStart` 트리거 아님. `/new`/`/resume`은 Codex slash command라 `omx-send`로 그대로 보내되 Discord reply라면 `--discord-approval` gate를 먼저 거친다. 원문/raw/full text는 `/sessions/:id/idle/latest` `fullText`; 세션 확인은 `/sessions` 또는 `/sessions/:id/state`; 최근 로그 `/sessions/:id/events`; 명령 이력은 `/sessions/:id/interactions`. AskPermission: `/approve`/`/deny`를 `omx-send --mode tmux`.
+라우팅: reply의 “이 세션/이거/방금 알림”은 payload `bridge_session_id`. 최우선 dispatch: Discord reply에서 `전달`/`보내`/`넘겨`/`세션에 넣어`면 설명/조회하지 말고 정제 후 `tmux-send --session <bridge_session_id> --discord-approval`; 반영/수정/재시도/진행/계속/위 내용/답장/고쳐는 “전달해” 없어도 정제 후 `tmux-send --discord-approval`. 이 gate는 bridge pending approval만 만들며 Discord 버튼을 자동 렌더링하지 않는다. `delivery.status=approval-pending`이면 반드시 Hermes native `clarify`/AskUserQuestion으로 정제 prompt와 선택지 `전송`, `거절`, `추가수정`을 표시한 뒤, 선택 결과를 `tmux-send --session <bridge_session_id> --answer-approval send|reject --question-id <questionId>`로 제출하고, 추가수정은 편집 문구를 받은 뒤 `--answer-approval modify --question-id <questionId> --edit <text>`로 기존 pending을 닫고 재정제한다. `clarify` 성공 전에는 “승인 요청 올려뒀다/버튼에서 전송 누르면 된다”고 말하지 말고, 실패 시 approval UI 실패를 명시한다. 추가수정은 재정제 후 새 approval을 만든다. Discord-origin이 아닌 명시적 local/manual helper dispatch만 plain `tmux-send --session <bridge_session_id>` 가능. “이건 뭐냐/궁금한데/왜 그래?”는 dispatch 단어가 없을 때만 읽고 설명. 종료/kill은 `tmux-kill` skill; 새 세션은 `tmux-new` skill; dispatch는 `tmux-send` skill; `SessionStart` 트리거 아님. `/new`/`/resume`은 Codex slash command라 `tmux-send`로 그대로 보내되 Discord reply라면 `--discord-approval` gate를 먼저 거친다. 원문/raw/full text는 `/sessions/:id/idle/latest` `fullText`; 세션 확인은 `/sessions` 또는 `/sessions/:id/state`; 최근 로그 `/sessions/:id/events`; 명령 이력은 `/sessions/:id/interactions`. AskPermission: `/approve`/`/deny`를 `tmux-send --mode tmux`.
 
 대상/금지: OMX lifecycle만. `channel_mapping_status=session-thread`: `channel_id`/`discord_delivery_target_id`/`chunk_delivery_channel_id`는 이미 Discord thread다. 긴 direct FinalAnswer는 bot token과 thread target이 있으면 브리지가 Discord에 직접 순차 전송한다. Hermes에 chunked payload가 도착한 경우에는 브리지가 1800자 안전 한도로 미리 나눈 각 payload를 순서대로 같은 thread에 보내고 재탐색/fallback 금지. 알림=응답; 확인 금지. `알림 렌더링 완료`/`요약을 보냈고` 금지.
 
@@ -401,7 +401,7 @@ OMX/Codex Discord 알림·제어 라우터.
 
 FinalAnswer 스타일: 설명 문장은 한국어 중심. `Document graph`(문서 그래프), `keyword_fallback`(키워드 fallback 경로)처럼 첫 뜻 병기. 영어 명사구를 한국어 문장 안에 길게 이어 붙이지 않는다. 명령어/경로/env/hash/PID는 backtick. 파일/설정/커밋/테스트는 대표 묶음, 판단에 필요한 식별자 보존.
 
-전용 skill 경계: `hermes-omx-notify`는 bridge read/status/notification rendering만 맡는다. 세션 생성은 `omx-new`, 전달/승인/거절은 `omx-send`, 종료는 `omx-kill` skill을 따른다. `omx-send` prompt refinement 규칙은 `skills/omx-send/SKILL.md`에 있으며, temp file/write_file을 쓰더라도 원문 Discord reply가 아니라 정제된 prompt만 기록해야 한다. Discord-originated Hermes dispatch는 정제된 prompt를 바로 보내지 말고 `omx-send --discord-approval`로 bridge-managed `omx-send-approval` question을 만든 다음 `clarify`/AskUserQuestion으로 실제 Discord 승인 카드를 렌더링해야 한다.
+전용 skill 경계: `hermes-omx-notify`는 bridge read/status/notification rendering만 맡는다. 세션 생성은 `tmux-new`, 전달/승인/거절은 `tmux-send`, 종료는 `tmux-kill` skill을 따른다. `tmux-send` prompt refinement 규칙은 `skills/omx-send/SKILL.md`에 있으며, temp file/write_file을 쓰더라도 원문 Discord reply가 아니라 정제된 prompt만 기록해야 한다. Discord-originated Hermes dispatch는 정제된 prompt를 바로 보내지 말고 `tmux-send --discord-approval`로 bridge-managed `tmux-send-approval` question을 만든 다음 `clarify`/AskUserQuestion으로 실제 Discord 승인 카드를 렌더링해야 한다.
 
 원문 그대로 요청: summary 없이 `fullText` 그대로. `payload.message_markdown`, `payload.text_preview`, 알림 조각/tmux capture로 재구성하지 않는다. 전체 원문을 새 ```markdown 코드블럭으로 감싸지 않고, 브리지가 이미 나눈 조각을 순서대로 보내며 markdown fence 보존, 모든 조각 끝 `(i/N)`, 제목 반복 금지. `fullText` 조회 실패/빈 값은 실패 명시.
 
@@ -426,7 +426,7 @@ install_subscription() {
   if command -v hermes >/dev/null 2>&1; then
     if subscribe_output="$(HERMES_HOME="$hermes_home" hermes webhook subscribe omx-notify \
       --events AskPermission,FinalAnswer \
-      --skills hermes-omx-notify,omx-new,omx-send,omx-kill \
+      --skills hermes-omx-notify,tmux-new,tmux-send,tmux-kill \
       --deliver discord \
       --deliver-chat-id '{channel_id}' \
       --secret "$secret" \
@@ -456,7 +456,7 @@ data['omx-notify'] = {
   events: ['AskPermission', 'FinalAnswer'],
   secret: process.env.SECRET,
   prompt: fs.readFileSync(process.env.PROMPT_FILE, 'utf8'),
-  skills: ['hermes-omx-notify', 'omx-new', 'omx-send', 'omx-kill'],
+  skills: ['hermes-omx-notify', 'tmux-new', 'tmux-send', 'tmux-kill'],
   deliver: 'discord',
   deliver_extra: { chat_id: '{channel_id}' },
   created_at: new Date().toISOString(),

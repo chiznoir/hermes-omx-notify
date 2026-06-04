@@ -362,7 +362,7 @@ test('Hermes trigger phrases route to helper CLI and bridge read API', async () 
   assert.match(sources, /이건 뭐냐/);
   assert.match(sources, /궁금한데/);
   assert.match(sources, /반영\/수정|반영.*수정/s);
-  assert.match(promptSource, /dispatch는 `omx-send` skill/);
+  assert.match(promptSource, /dispatch는 `tmux-send` skill/);
   assert.match(bridgeSkillSource, /explain from bridge read endpoints only when the reply has no dispatch\/stop\/start verbs/);
   assert.match(sources, /이 세션/);
   assert.match(sources, /이거/);
@@ -372,13 +372,13 @@ test('Hermes trigger phrases route to helper CLI and bridge read API', async () 
   assert.match(sources, /discord_thread_id.*Discord session thread|Discord session thread.*discord_thread_id/s);
   assert.match(sources, /thread_id.*Codex.*discord_thread_id|discord_thread_id.*Discord.*thread_id.*Codex/s);
   assert.match(sources, /project 최신 세션/);
-  assert.match(sources, /omx-send --session/);
-  assert.match(promptSource, /omx-send --session <bridge_session_id> --discord-approval/);
+  assert.match(sources, /tmux-send --session/);
+  assert.match(promptSource, /tmux-send --session <bridge_session_id> --discord-approval/);
   assert.match(promptSource, /clarify.*AskUserQuestion/s);
   assert.match(promptSource, /성공 전에는.*버튼에서 전송 누르면 된다/s);
-  assert.match(skillSource, /Discord-originated Hermes reply dispatch -> omx-send --discord-approval/);
+  assert.match(skillSource, /Discord-originated Hermes reply dispatch -> tmux-send --discord-approval/);
   assert.match(skillSource, /Hermes Gateway does not automatically render arbitrary terminal-tool JSON `component_actions` as Discord buttons/);
-  assert.match(skillSource, /omx-send --session <id> --answer-approval send --question-id <questionId>/);
+  assert.match(skillSource, /tmux-send --session <id> --answer-approval send --question-id <questionId>/);
   assert.match(sources, /전송\/거절\/추가수정|`전송`, `거절`, `추가수정`/);
   assert.match(sources, /원문 알려줘/);
   assert.match(sources, /마지막 답변 원문/);
@@ -397,22 +397,22 @@ test('Hermes trigger phrases route to helper CLI and bridge read API', async () 
   assert.match(sources, /새 세션/);
   assert.match(sources, /세션 열어/);
   assert.match(sources, /시작해/);
-  assert.match(sources, /omx-new/);
+  assert.match(sources, /tmux-new/);
   assert.match(sources, /SessionStart.*트리거가 아니다|SessionStart.*not a new-session trigger|Bridge webhook `SessionStart` payload text is an alert body/s);
   assert.match(sources, /\/new.*Codex.*slash command|Codex.*slash command.*\/new/s);
   assert.match(sources, /\/resume.*Codex.*slash command|Codex.*slash command.*\/resume/s);
-  assert.match(sources, /\/new.*omx-send.*그대로|preserve.*\/new.*omx-send/s);
-  assert.match(sources, /\/resume.*omx-send.*그대로|preserve.*\/resume.*omx-send/s);
-  assert.doesNotMatch(promptSource, /“새 세션”, “세션 열어”, “시작해”, “\/new”는 `omx-new`/);
-  assert.doesNotMatch(skillSource, /\/new -> omx-new/);
-  assert.doesNotMatch(skillSource, /\/resume -> omx-new/);
-  assert.doesNotMatch(skillSource, /or “\/new” -> use `omx-new`/);
-  assert.doesNotMatch(operationsSource, /“새 세션”, “세션 열어”, “시작해”, “\/new”는 `omx-new`/);
+  assert.match(sources, /\/new.*tmux-send.*그대로|preserve.*\/new.*tmux-send/s);
+  assert.match(sources, /\/resume.*tmux-send.*그대로|preserve.*\/resume.*tmux-send/s);
+  assert.doesNotMatch(promptSource, /“새 세션”, “세션 열어”, “시작해”, “\/new”는 `tmux-new`/);
+  assert.doesNotMatch(skillSource, /\/new -> tmux-new/);
+  assert.doesNotMatch(skillSource, /\/resume -> tmux-new/);
+  assert.doesNotMatch(skillSource, /or “\/new” -> use `tmux-new`/);
+  assert.doesNotMatch(operationsSource, /“새 세션”, “세션 열어”, “시작해”, “\/new”는 `tmux-new`/);
   assert.match(sources, /세션 종료해/);
   assert.match(sources, /세션 kill/);
   assert.match(sources, /킬/);
   assert.match(sources, /세션 죽여/);
-  assert.match(sources, /omx-kill/);
+  assert.match(sources, /tmux-kill/);
   assert.match(sources, /AskPermission/);
   assert.match(sources, /YOLO|AskPermission/);
 });
@@ -446,11 +446,11 @@ test('Hermes docs track current repository helper CLI contract', async () => {
   assert.match(sources, /repository(?:'s)? `bin\/`|repository의 `bin\/`/);
   assert.match(sources, /scripts\/install-omx-cli\.sh --force/);
   assert.match(sources, /scripts\/install-hermes-stack\.sh --non-interactive/);
-  assert.match(sources, /omx-new \[PROJECT_DIR\].*--runs PATH.*--no-check.*OMX_ARGS/s);
-  assert.match(sources, /raw `omx --madmax --high`.*직접 실행하지|rather than raw `omx --madmax --high`/s);
+  assert.match(sources, /tmux-new \[PROJECT_DIR\].*--json.*--no-check.*GJC_ARGS/s);
+  assert.match(sources, /rather than raw `gjc`|raw `gjc`/s);
   assert.match(sources, /--tmux.*--direct.*--disable codex_hooks/s);
-  assert.match(sources, /omx-send --session SESSION_ID.*--dry\|--dry-run.*--hold\|--no-submit/s);
-  assert.match(sources, /omx-send --session <bridgeSessionId> --discord-approval/);
+  assert.match(sources, /tmux-send --session SESSION_ID.*--dry\|--dry-run.*--hold\|--no-submit/s);
+  assert.match(sources, /tmux-send --session <bridgeSessionId> --discord-approval/);
 });
 
 test('Hermes command dispatch rules rely on User Command events and meaning-preserving executable prompt refinement', async () => {
@@ -463,13 +463,13 @@ test('Hermes command dispatch rules rely on User Command events and meaning-pres
 
   assert.match(bridgeSkillSource, /CommandSubmitted/);
   assert.match(bridgeSkillSource, /User Command/);
-  assert.match(promptSource, /skills\/omx-send\/SKILL\.md/);
+  assert.match(promptSource, /skills\/tmux-send\/SKILL\.md|skills\/omx-send\/SKILL\.md/);
 
-  assert.match(operationsSource, /skills\/omx-send\/SKILL\.md/);
-  assert.match(operationsSource, /skills\/omx-send\/SKILL\.md.*의미 보존/s);
+  assert.match(operationsSource, /skills\/tmux-send\/SKILL\.md|skills\/omx-send\/SKILL\.md/);
+  assert.match(operationsSource, /skills\/(?:tmux-send|omx-send)\/SKILL\.md.*의미 보존/s);
 
   for (const source of [skillSource]) {
-    assert.match(source, /Prompt refinement before `omx-send`/);
+    assert.match(source, /Prompt refinement before `tmux-send`/);
     assert.match(source, /대상 세션 식별\/routing metadata|대상 세션\/routing metadata|target session\/routing metadata/);
     assert.match(source, /실제 전달할 사용자 지시|실제 전달 지시|actual user instruction/);
     assert.match(source, /의미 보존형 작업 지시문|meaning-preserving executable instruction/);
@@ -538,44 +538,44 @@ test('Hermes command dispatch rules rely on User Command events and meaning-pres
     assert.match(docSource, /User Command/);
     assert.match(docSource, /FinalAnswer/);
     assert.match(docSource, /FinalAnswer.*\(i\/N\)|\(i\/N\).*FinalAnswer/s);
-    assert.match(docSource, /hermes-omx-notify,omx-new,omx-send,omx-kill/);
-    assert.match(docSource, /skills\/omx-send\/SKILL\.md/);
+    assert.match(docSource, /hermes-omx-notify,tmux-new,tmux-send,tmux-kill/);
+    assert.match(docSource, /skills\/(?:tmux-send|omx-send)\/SKILL\.md/);
   }
 });
 
-test('omx-send dispatch skill cannot bypass prompt refinement when loaded directly', async () => {
+test('tmux-send dispatch skill cannot bypass prompt refinement when loaded directly', async () => {
   const skillSource = await readFile(join(process.cwd(), 'skills', 'omx-send', 'SKILL.md'), 'utf8');
   const installerSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-skill.sh'), 'utf8');
 
-  assert.match(skillSource, /direct `skill_view\("omx-send"\).*does not bypass prompt refinement/s);
-  assert.match(skillSource, /The exact argument passed to `omx-send` MUST already be the refined prompt/);
-  assert.match(skillSource, /Before any `write_file`, temp-file handoff, shell command, or `omx-send` invocation/);
+  assert.match(skillSource, /direct `skill_view\("tmux-send"\).*does not bypass prompt refinement/s);
+  assert.match(skillSource, /The exact argument passed to `tmux-send` MUST already be the refined prompt/);
+  assert.match(skillSource, /Before any `write_file`, temp-file handoff, shell command, or `tmux-send` invocation/);
   assert.match(skillSource, /temp file content must be the refined (?:prompt|or raw-bounded payload), never the (?:raw|full raw) Discord reply/);
   assert.match(skillSource, /\[Replying to: \.\.\.\]/);
   assert.match(skillSource, /\[치즈\] 이 메시지를 \.\.\.에 전달해|\[치즈\] 이 메시지를 \.\.\. 에 전달해/);
   assert.match(skillSource, /추가 전달:.*치즈전달:.*사용자요청:.*User says:/s);
   assert.match(skillSource, /meaning-preserving executable instruction/);
   assert.match(skillSource, /not mere proofreading and not raw copy\/paste/);
-  assert.match(skillSource, /Use `omx-send --raw` only when the user explicitly requests/);
+  assert.match(skillSource, /Use `tmux-send --raw` only when the user explicitly requests/);
   assert.match(skillSource, /Discord approval gate/);
-  assert.match(skillSource, /Discord reply → Hermes → existing OMX\/Codex session dispatch MUST prefer `omx-send --discord-approval`/);
+  assert.match(skillSource, /Discord reply → Hermes → existing GJC\/bridge session dispatch MUST prefer `tmux-send --discord-approval`/);
   assert.match(skillSource, /not a second refinement policy/);
   assert.match(skillSource, /delivery\.status == "approval-pending".*clarify/s);
   assert.match(skillSource, /do not claim buttons exist/);
-  assert.match(skillSource, /추가수정.*재정제.*new approval-gated `omx-send`/s);
-  assert.match(installerSource, /OMX helper skills/);
-  assert.match(installerSource, /for helper_skill in omx-new omx-send omx-kill|install_skill "\$helper_skill"/);
+  assert.match(skillSource, /추가수정.*재정제.*new approval-gated `tmux-send`/s);
+  assert.match(installerSource, /Helper skills/);
+  assert.match(installerSource, /tmux-new\|skills\/omx-new|install_skill "\$helper_skill"/);
   const stackInstallerSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
-  assert.match(stackInstallerSource, /--skills hermes-omx-notify,omx-new,omx-send,omx-kill/);
-  assert.match(stackInstallerSource, /skills: \['hermes-omx-notify', 'omx-new', 'omx-send', 'omx-kill'\]/);
+  assert.match(stackInstallerSource, /--skills hermes-omx-notify,tmux-new,tmux-send,tmux-kill/);
+  assert.match(stackInstallerSource, /skills: \['hermes-omx-notify', 'tmux-new', 'tmux-send', 'tmux-kill'\]/);
 });
 
 test('Hermes prompt separates routing metadata from delivered payload instructions', async () => {
   const skillSource = await readFile(join(process.cwd(), 'skills', 'omx-send', 'SKILL.md'), 'utf8');
   const operationsSource = await readFile(join(process.cwd(), 'docs', 'operations.md'), 'utf8');
 
-  assert.match(operationsSource, /skills\/omx-send\/SKILL\.md/);
-  assert.match(operationsSource, /skills\/omx-send\/SKILL\.md.*의미 보존/s);
+  assert.match(operationsSource, /skills\/tmux-send\/SKILL\.md|skills\/omx-send\/SKILL\.md/);
+  assert.match(operationsSource, /skills\/(?:tmux-send|omx-send)\/SKILL\.md.*의미 보존/s);
 
   for (const source of [skillSource]) {
     assert.match(source, /1[.)]\s*대상 세션(?: 식별)?\/routing metadata.*2[.)]\s*실제 전달(?:할 사용자)? 지시.*3[.)]\s*의미 보존형 작업 지시문.*4[.)]\s*확장.*왜곡 차단/s);

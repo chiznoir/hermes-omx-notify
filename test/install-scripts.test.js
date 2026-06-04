@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdir, mkdtemp, readFile, readlink, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, readFile, readlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -132,7 +132,7 @@ test('install-systemd-service enables Hermes allowlist without default restart e
 });
 
 
-test('bin/install.sh installs only core bridge helper symlinks', async () => {
+test('bin/install.sh installs only canonical tmux helper symlinks', async () => {
   const env = await tempEnv();
   const targetDir = join(env.HOME, 'bin');
   const { stdout } = await execFile('bash', [
@@ -141,16 +141,19 @@ test('bin/install.sh installs only core bridge helper symlinks', async () => {
     '--force',
   ], { env, maxBuffer: 1024 * 1024 });
 
-  assert.match(stdout, /Installed symlink: .*omx-new/);
-  assert.match(stdout, /Installed symlink: .*omx-send/);
-  assert.match(stdout, /Installed symlink: .*omx-kill/);
+  assert.match(stdout, /Installed symlink: .*tmux-new/);
+  assert.match(stdout, /Installed symlink: .*tmux-send/);
+  assert.match(stdout, /Installed symlink: .*tmux-kill/);
   assert.doesNotMatch(stdout, /omx-bootstrap|omx-status|omx-sync|omx-cleanup/);
-  assert.equal(await readlink(join(targetDir, 'omx-new')), join(process.cwd(), 'bin', 'omx-new'));
-  assert.equal(await readlink(join(targetDir, 'omx-send')), join(process.cwd(), 'bin', 'omx-send'));
-  assert.equal(await readlink(join(targetDir, 'omx-kill')), join(process.cwd(), 'bin', 'omx-kill'));
+  assert.equal(await readlink(join(targetDir, 'tmux-new')), join(process.cwd(), 'bin', 'omx-new'));
+  assert.equal(await readlink(join(targetDir, 'tmux-send')), join(process.cwd(), 'bin', 'omx-send'));
+  assert.equal(await readlink(join(targetDir, 'tmux-kill')), join(process.cwd(), 'bin', 'omx-kill'));
+  await assert.rejects(access(join(targetDir, 'omx-new')));
+  await assert.rejects(access(join(targetDir, 'omx-send')));
+  await assert.rejects(access(join(targetDir, 'omx-kill')));
 });
 
-test('install-omx-cli installs bridge helper symlinks', async () => {
+test('install-omx-cli installs canonical tmux helper symlinks and leaves omx aliases uninstalled', async () => {
   const env = await tempEnv();
   const targetDir = join(env.HOME, 'bin');
   const { stdout } = await execFile('bash', [
@@ -160,12 +163,15 @@ test('install-omx-cli installs bridge helper symlinks', async () => {
     '--force',
   ], { env, maxBuffer: 1024 * 1024 });
 
-  assert.match(stdout, /Installed symlink: .*omx-new/);
-  assert.match(stdout, /Installed symlink: .*omx-send/);
-  assert.match(stdout, /Installed symlink: .*omx-kill/);
-  assert.equal(await readlink(join(targetDir, 'omx-new')), join(process.cwd(), 'bin', 'omx-new'));
-  assert.equal(await readlink(join(targetDir, 'omx-send')), join(process.cwd(), 'bin', 'omx-send'));
-  assert.equal(await readlink(join(targetDir, 'omx-kill')), join(process.cwd(), 'bin', 'omx-kill'));
+  assert.match(stdout, /Installed symlink: .*tmux-new/);
+  assert.match(stdout, /Installed symlink: .*tmux-send/);
+  assert.match(stdout, /Installed symlink: .*tmux-kill/);
+  assert.equal(await readlink(join(targetDir, 'tmux-new')), join(process.cwd(), 'bin', 'omx-new'));
+  assert.equal(await readlink(join(targetDir, 'tmux-send')), join(process.cwd(), 'bin', 'omx-send'));
+  assert.equal(await readlink(join(targetDir, 'tmux-kill')), join(process.cwd(), 'bin', 'omx-kill'));
+  await assert.rejects(access(join(targetDir, 'omx-new')));
+  await assert.rejects(access(join(targetDir, 'omx-send')));
+  await assert.rejects(access(join(targetDir, 'omx-kill')));
 });
 
 test('apply-runtime dry-run shows the user service restart and health check plan', async () => {
@@ -292,9 +298,9 @@ test('core worktree does not expose extension helper scripts', async () => {
   assert.equal(pkg.scripts.start, 'node src/server.js');
 
   const binReadme = await readFile(join(process.cwd(), 'bin', 'README.md'), 'utf8');
-  assert.match(binReadme, /omx-new/);
-  assert.match(binReadme, /omx-send/);
-  assert.match(binReadme, /omx-kill/);
+  assert.match(binReadme, /tmux-new/);
+  assert.match(binReadme, /tmux-send/);
+  assert.match(binReadme, /tmux-kill/);
   for (const removed of ['bootstrap', 'status', 'sync', 'cleanup'].map((name) => `omx-${name}`)) {
     assert.equal(binReadme.includes(removed), false);
   }

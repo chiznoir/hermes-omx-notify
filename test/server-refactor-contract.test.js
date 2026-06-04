@@ -65,14 +65,14 @@ test('raw HTTP JSON responses preserve pretty body, content-type, content-length
 
 test('helper CLI scripts keep bridge API selection and payload contracts visible', async () => {
   const send = await readFile('bin/omx-send', 'utf8');
-  assert.match(send, /mode는 auto\|tmux\|codex 중 하나/);
+  assert.match(send, /mode must be one of auto\|tmux\|codex/);
   assert.match(send, /--discord-approval/);
   assert.match(send, /--answer-approval/);
   assert.match(send, /--question-id/);
   assert.match(send, /\/sessions\/\$session_id\/question-answers/);
   assert.match(send, /discord-hermes-omx-send/);
-  assert.match(send, /\/sessions\?activity=false&limit=\$session_list_limit/);
-  assert.match(send, /select\(\.project==\$project and \.status!="ended"\)/);
+  assert.match(send, /\/sessions\?limit=\$session_list_limit/);
+  assert.match(send, /select\(\.project==\$project and \(\.status=="active" or \.tmuxId != null\)\)/);
   assert.match(send, /\{commandText:\$text, mode:\$mode, dryRun:\$dry, submit:\$submit, normalize:\$normalize\}/);
   assert.match(send, /\{approvalGate:\$approval_gate\}/);
   assert.match(send, /-X POST "\$bridge_url\/sessions\/\$session_id\/commands"/);
@@ -81,8 +81,8 @@ test('helper CLI scripts keep bridge API selection and payload contracts visible
   assert.match(kill, /"\$bridge_url\/sessions"/);
   assert.match(kill, /\.bridgeSessionId==\$id or \.codexSessionId==\$id or \.omxSessionId==\$id or \.tmuxId==\$id or \.tmuxPaneId==\$id/);
   assert.match(kill, /select\(\.project==\$project and \.status!="ended" and \(\.tmuxId != null\)\)/);
-  assert.match(kill, /비대화형 환경에서는 --force가 필요합니다/);
-  assert.match(kill, /tmux kill-session -t "\$tmux_id"/);
+  assert.match(kill, /non-interactive use requires --force/);
+  assert.match(kill, /tmux kill-session -t "\$managed_session_name"/);
 });
 
 test('event-index schema and delivery transition columns stay contract-frozen', async () => {

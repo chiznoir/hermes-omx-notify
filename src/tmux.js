@@ -4,6 +4,16 @@ const PANE_RE = /^%\d+$/;
 const DEFAULT_ENTER_RETRY_COUNT = 4;
 const DEFAULT_ENTER_DELAY_MS = 250;
 
+export const GJC_MANAGED_TAGS = Object.freeze({
+  profile: '@gjc-profile',
+  branch: '@gjc-branch',
+  branchSlug: '@gjc-branch-slug',
+  project: '@gjc-project',
+  ownerKey: '@gjc-owner-key',
+  startedAt: '@gjc-started-at',
+  sessionId: '@gjc-session-id',
+});
+
 function runTmux(args) {
   return execFileSync(process.env.TMUX_BIN || 'tmux', args, {
     encoding: 'utf8',
@@ -12,18 +22,37 @@ function runTmux(args) {
   }).trim();
 }
 
+function buildManagedMetadata(gjcProfile, gjcBranch, gjcBranchSlug, gjcProject, gjcOwnerKey, gjcStartedAt, gjcSessionId) {
+  return {
+    gjcProfile: gjcProfile || '',
+    gjcBranch: gjcBranch || '',
+    gjcBranchSlug: gjcBranchSlug || '',
+    gjcProject: gjcProject || '',
+    gjcOwnerKey: gjcOwnerKey || '',
+    gjcStartedAt: gjcStartedAt || '',
+    gjcSessionId: gjcSessionId || '',
+    managed: gjcProfile === '1' && Boolean(gjcBranch) && Boolean(gjcBranchSlug) && Boolean(gjcProject) && Boolean(gjcOwnerKey) && Boolean(gjcStartedAt) && Boolean(gjcSessionId),
+  };
+}
+
 export function listTmuxPanes() {
   try {
-    const output = runTmux(['list-panes', '-a', '-F', '#{session_name}\t#{pane_id}\t#{pane_pid}\t#{pane_dead}\t#{pane_current_path}']);
+    const output = runTmux([
+      'list-panes',
+      '-a',
+      '-F',
+      '#{session_name}	#{pane_id}	#{pane_pid}	#{pane_dead}	#{pane_current_path}	#{@gjc-profile}	#{@gjc-branch}	#{@gjc-branch-slug}	#{@gjc-project}	#{@gjc-owner-key}	#{@gjc-started-at}	#{@gjc-session-id}',
+    ]);
     if (!output) return [];
     return output.split('\n').filter(Boolean).map((line) => {
-      const [sessionName, paneId, panePid, paneDead, paneCurrentPath] = line.split('\t');
+      const [sessionName, paneId, panePid, paneDead, paneCurrentPath, gjcProfile, gjcBranch, gjcBranchSlug, gjcProject, gjcOwnerKey, gjcStartedAt, gjcSessionId] = line.split('\t');
       return {
         tmuxId: sessionName,
         tmuxPaneId: paneId,
         panePid: Number.parseInt(panePid, 10),
         paneDead: paneDead === '1',
         paneCurrentPath,
+        ...buildManagedMetadata(gjcProfile, gjcBranch, gjcBranchSlug, gjcProject, gjcOwnerKey, gjcStartedAt, gjcSessionId),
       };
     });
   } catch {
@@ -33,19 +62,58 @@ export function listTmuxPanes() {
 
 export function listTmuxSessions() {
   try {
-    const output = runTmux(['list-sessions', '-F', '#{session_name}\t#{session_created}\t#{session_attached}']);
+    const output = runTmux([
+      'list-sessions',
+      '-F',
+      '#{session_name}	#{session_created}	#{session_attached}	#{@gjc-profile}	#{@gjc-branch}	#{@gjc-branch-slug}	#{@gjc-project}	#{@gjc-owner-key}	#{@gjc-started-at}	#{@gjc-session-id}',
+    ]);
     if (!output) return [];
     return output.split('\n').filter(Boolean).map((line) => {
-      const [tmuxId, createdRaw, attachedRaw] = line.split('\t');
+      const [tmuxId, createdRaw, attachedRaw, gjcProfile, gjcBranch, gjcBranchSlug, gjcProject, gjcOwnerKey, gjcStartedAt, gjcSessionId] = line.split('\t');
       return {
         tmuxId,
         createdAt: Number.isFinite(Number(createdRaw)) ? new Date(Number(createdRaw) * 1000).toISOString() : null,
         attached: attachedRaw === '1',
+        ...buildManagedMetadata(gjcProfile, gjcBranch, gjcBranchSlug, gjcProject, gjcOwnerKey, gjcStartedAt, gjcSessionId),
       };
     });
   } catch {
     return [];
   }
+}
+
+export function inspectTmuxTarget(target) {
+  if (!target || typeof target !== 'string') return null;
+  try {
+    const output = runTmux([
+      'display-message',
+      '-p',
+      '-t',
+      target,
+      '#{session_name}	#{pane_id}	#{@gjc-profile}	#{@gjc-branch}	#{@gjc-branch-slug}	#{@gjc-project}	#{@gjc-owner-key}	#{@gjc-started-at}	#{@gjc-session-id}',
+    ]);
+    if (!output) return null;
+    const [tmuxId, tmuxPaneId, gjcProfile, gjcBranch, gjcBranchSlug, gjcProject, gjcOwnerKey, gjcStartedAt, gjcSessionId] = output.split('\t');
+    return {
+      tmuxId,
+      tmuxPaneId: PANE_RE.test(tmuxPaneId || '') ? tmuxPaneId : null,
+      ...buildManagedMetadata(gjcProfile, gjcBranch, gjcBranchSlug, gjcProject, gjcOwnerKey, gjcStartedAt, gjcSessionId),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function isManagedTmuxTarget(target, expectations = {}) {
+  const targetInfo = typeof target === 'string' ? inspectTmuxTarget(target) : target;
+  if (!targetInfo?.managed) return false;
+  if (expectations.branch && targetInfo.gjcBranch !== expectations.branch) return false;
+  if (expectations.branchSlug && targetInfo.gjcBranchSlug !== expectations.branchSlug) return false;
+  if (expectations.project && targetInfo.gjcProject !== expectations.project) return false;
+  if (expectations.ownerKey && targetInfo.gjcOwnerKey !== expectations.ownerKey) return false;
+  if (expectations.startedAt && targetInfo.gjcStartedAt !== expectations.startedAt) return false;
+  if (expectations.sessionId && targetInfo.gjcSessionId !== expectations.sessionId) return false;
+  return true;
 }
 
 export function sendToTmux(target, text, { submit = true } = {}) {
