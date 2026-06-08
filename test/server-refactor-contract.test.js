@@ -64,7 +64,7 @@ test('raw HTTP JSON responses preserve pretty body, content-type, content-length
 });
 
 test('helper CLI scripts keep bridge API selection and payload contracts visible', async () => {
-  const send = await readFile('bin/omx-send', 'utf8');
+  const send = await readFile('bin/tmux-send', 'utf8');
   assert.match(send, /mode must be one of auto\|tmux\|codex/);
   assert.match(send, /--discord-approval/);
   assert.match(send, /--answer-approval/);
@@ -77,7 +77,7 @@ test('helper CLI scripts keep bridge API selection and payload contracts visible
   assert.match(send, /\{approvalGate:\$approval_gate\}/);
   assert.match(send, /-X POST "\$bridge_url\/sessions\/\$session_id\/commands"/);
 
-  const kill = await readFile('bin/omx-kill', 'utf8');
+  const kill = await readFile('bin/tmux-kill', 'utf8');
   assert.match(kill, /"\$bridge_url\/sessions"/);
   assert.match(kill, /\.bridgeSessionId==\$id or \.codexSessionId==\$id or \.omxSessionId==\$id or \.tmuxId==\$id or \.tmuxPaneId==\$id/);
   assert.match(kill, /select\(\.project==\$project and \.status!="ended" and \(\.tmuxId != null\)\)/);

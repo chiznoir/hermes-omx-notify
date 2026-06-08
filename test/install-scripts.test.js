@@ -145,9 +145,9 @@ test('bin/install.sh installs only canonical tmux helper symlinks', async () => 
   assert.match(stdout, /Installed symlink: .*tmux-send/);
   assert.match(stdout, /Installed symlink: .*tmux-kill/);
   assert.doesNotMatch(stdout, /omx-bootstrap|omx-status|omx-sync|omx-cleanup/);
-  assert.equal(await readlink(join(targetDir, 'tmux-new')), join(process.cwd(), 'bin', 'omx-new'));
-  assert.equal(await readlink(join(targetDir, 'tmux-send')), join(process.cwd(), 'bin', 'omx-send'));
-  assert.equal(await readlink(join(targetDir, 'tmux-kill')), join(process.cwd(), 'bin', 'omx-kill'));
+  assert.equal(await readlink(join(targetDir, 'tmux-new')), join(process.cwd(), 'bin', 'tmux-new'));
+  assert.equal(await readlink(join(targetDir, 'tmux-send')), join(process.cwd(), 'bin', 'tmux-send'));
+  assert.equal(await readlink(join(targetDir, 'tmux-kill')), join(process.cwd(), 'bin', 'tmux-kill'));
   await assert.rejects(access(join(targetDir, 'omx-new')));
   await assert.rejects(access(join(targetDir, 'omx-send')));
   await assert.rejects(access(join(targetDir, 'omx-kill')));
@@ -166,9 +166,9 @@ test('install-omx-cli installs canonical tmux helper symlinks and leaves omx ali
   assert.match(stdout, /Installed symlink: .*tmux-new/);
   assert.match(stdout, /Installed symlink: .*tmux-send/);
   assert.match(stdout, /Installed symlink: .*tmux-kill/);
-  assert.equal(await readlink(join(targetDir, 'tmux-new')), join(process.cwd(), 'bin', 'omx-new'));
-  assert.equal(await readlink(join(targetDir, 'tmux-send')), join(process.cwd(), 'bin', 'omx-send'));
-  assert.equal(await readlink(join(targetDir, 'tmux-kill')), join(process.cwd(), 'bin', 'omx-kill'));
+  assert.equal(await readlink(join(targetDir, 'tmux-new')), join(process.cwd(), 'bin', 'tmux-new'));
+  assert.equal(await readlink(join(targetDir, 'tmux-send')), join(process.cwd(), 'bin', 'tmux-send'));
+  assert.equal(await readlink(join(targetDir, 'tmux-kill')), join(process.cwd(), 'bin', 'tmux-kill'));
   await assert.rejects(access(join(targetDir, 'omx-new')));
   await assert.rejects(access(join(targetDir, 'omx-send')));
   await assert.rejects(access(join(targetDir, 'omx-kill')));

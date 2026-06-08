@@ -120,4 +120,4 @@ Submit answers only to the bridge question endpoint returned by the payload. Do 
 - Do not mutate bridge state with hand-written terminal `curl` unless no supported helper/API surface exists and the user explicitly accepts that fallback.
 - Do not use raw tmux capture when bridge endpoints are available.
 - Do not choose a different same-project session when a reply contains `bridge_session_id`, `session:`, `tmux:`, or `discord_thread_id` metadata.
-- Do not keep a second copy of `tmux-send` prompt refinement rules here; dispatch prompt refinement is described in `skills/omx-send/SKILL.md`.
+- Do not keep a second copy of `tmux-send` prompt refinement rules here; dispatch prompt refinement is described in `skills/tmux-send/SKILL.md`.

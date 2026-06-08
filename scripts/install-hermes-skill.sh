@@ -92,9 +92,9 @@ if [[ "$install_helper_skills" == "1" && "$name" == "hermes-omx-notify" && "$sou
     sync_existing_profile_skill "$helper_skill" "$repo_root/$helper_source_dir"
     installed_helper_skills+=("$hermes_home/skills/$category/$helper_skill")
   done <<'EOF'
-tmux-new|skills/omx-new
-tmux-send|skills/omx-send
-tmux-kill|skills/omx-kill
+tmux-new|skills/tmux-new
+tmux-send|skills/tmux-send
+tmux-kill|skills/tmux-kill
 EOF
 fi
 

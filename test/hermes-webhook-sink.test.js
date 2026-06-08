@@ -340,11 +340,11 @@ test('Hermes subscription prompt keeps FinalAnswer summaries sufficiently detail
 
 test('Hermes trigger phrases route to helper CLI and bridge read API', async () => {
   const promptSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
-  const skillSource = await readFile(join(process.cwd(), 'skills', 'omx-send', 'SKILL.md'), 'utf8');
+  const skillSource = await readFile(join(process.cwd(), 'skills', 'tmux-send', 'SKILL.md'), 'utf8');
   const bridgeSkillSource = await readFile(join(process.cwd(), 'skills', 'hermes-omx-notify', 'SKILL.md'), 'utf8');
   const operationsSource = await readFile(join(process.cwd(), 'docs', 'operations.md'), 'utf8');
-  const omxNewSource = await readFile(join(process.cwd(), 'skills', 'omx-new', 'SKILL.md'), 'utf8');
-  const omxKillSource = await readFile(join(process.cwd(), 'skills', 'omx-kill', 'SKILL.md'), 'utf8');
+  const omxNewSource = await readFile(join(process.cwd(), 'skills', 'tmux-new', 'SKILL.md'), 'utf8');
+  const omxKillSource = await readFile(join(process.cwd(), 'skills', 'tmux-kill', 'SKILL.md'), 'utf8');
   const sources = [promptSource, skillSource, bridgeSkillSource, omxNewSource, omxKillSource, operationsSource].join('\n');
 
   assert.match(skillSource, /triggers:/);
@@ -426,7 +426,7 @@ test('operations docs identify runtime Hermes rule injection surfaces', async ()
     'skills/hermes-omx-notify/SKILL.md',
     'src/hermes-webhook-sink.js',
     'src/server.js',
-    'OMX lifecycle',
+    'GJC tmux lifecycle',
   ]) {
     assert.match(operationsSource, new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
@@ -438,9 +438,9 @@ test('Hermes docs track current repository helper CLI contract', async () => {
     await readFile(join(process.cwd(), 'docs', 'operations.md'), 'utf8'),
     await readFile(join(process.cwd(), 'docs', 'hermes-gateway-integration.md'), 'utf8'),
     await readFile(join(process.cwd(), 'skills', 'hermes-omx-notify', 'SKILL.md'), 'utf8'),
-    await readFile(join(process.cwd(), 'skills', 'omx-new', 'SKILL.md'), 'utf8'),
-    await readFile(join(process.cwd(), 'skills', 'omx-send', 'SKILL.md'), 'utf8'),
-    await readFile(join(process.cwd(), 'skills', 'omx-kill', 'SKILL.md'), 'utf8'),
+    await readFile(join(process.cwd(), 'skills', 'tmux-new', 'SKILL.md'), 'utf8'),
+    await readFile(join(process.cwd(), 'skills', 'tmux-send', 'SKILL.md'), 'utf8'),
+    await readFile(join(process.cwd(), 'skills', 'tmux-kill', 'SKILL.md'), 'utf8'),
   ].join('\n');
 
   assert.match(sources, /repository(?:'s)? `bin\/`|repository의 `bin\/`/);
@@ -455,7 +455,7 @@ test('Hermes docs track current repository helper CLI contract', async () => {
 
 test('Hermes command dispatch rules rely on User Command events and meaning-preserving executable prompt refinement', async () => {
   const promptSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
-  const skillSource = await readFile(join(process.cwd(), 'skills', 'omx-send', 'SKILL.md'), 'utf8');
+  const skillSource = await readFile(join(process.cwd(), 'skills', 'tmux-send', 'SKILL.md'), 'utf8');
   const bridgeSkillSource = await readFile(join(process.cwd(), 'skills', 'hermes-omx-notify', 'SKILL.md'), 'utf8');
   const operationsSource = await readFile(join(process.cwd(), 'docs', 'operations.md'), 'utf8');
   const quickstartSource = await readFile(join(process.cwd(), 'docs', 'quickstart.md'), 'utf8');
@@ -463,10 +463,10 @@ test('Hermes command dispatch rules rely on User Command events and meaning-pres
 
   assert.match(bridgeSkillSource, /CommandSubmitted/);
   assert.match(bridgeSkillSource, /User Command/);
-  assert.match(promptSource, /skills\/tmux-send\/SKILL\.md|skills\/omx-send\/SKILL\.md/);
+  assert.match(promptSource, /skills\/tmux-send\/SKILL\.md/);
 
-  assert.match(operationsSource, /skills\/tmux-send\/SKILL\.md|skills\/omx-send\/SKILL\.md/);
-  assert.match(operationsSource, /skills\/(?:tmux-send|omx-send)\/SKILL\.md.*의미 보존/s);
+  assert.match(operationsSource, /skills\/tmux-send\/SKILL\.md/);
+  assert.match(operationsSource, /skills\/tmux-send\/SKILL\.md.*의미 보존/s);
 
   for (const source of [skillSource]) {
     assert.match(source, /Prompt refinement before `tmux-send`/);
@@ -539,12 +539,12 @@ test('Hermes command dispatch rules rely on User Command events and meaning-pres
     assert.match(docSource, /FinalAnswer/);
     assert.match(docSource, /FinalAnswer.*\(i\/N\)|\(i\/N\).*FinalAnswer/s);
     assert.match(docSource, /hermes-omx-notify,tmux-new,tmux-send,tmux-kill/);
-    assert.match(docSource, /skills\/(?:tmux-send|omx-send)\/SKILL\.md/);
+    assert.match(docSource, /skills\/tmux-send\/SKILL\.md/);
   }
 });
 
 test('tmux-send dispatch skill cannot bypass prompt refinement when loaded directly', async () => {
-  const skillSource = await readFile(join(process.cwd(), 'skills', 'omx-send', 'SKILL.md'), 'utf8');
+  const skillSource = await readFile(join(process.cwd(), 'skills', 'tmux-send', 'SKILL.md'), 'utf8');
   const installerSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-skill.sh'), 'utf8');
 
   assert.match(skillSource, /direct `skill_view\("tmux-send"\).*does not bypass prompt refinement/s);
@@ -564,18 +564,18 @@ test('tmux-send dispatch skill cannot bypass prompt refinement when loaded direc
   assert.match(skillSource, /do not claim buttons exist/);
   assert.match(skillSource, /추가수정.*재정제.*new approval-gated `tmux-send`/s);
   assert.match(installerSource, /Helper skills/);
-  assert.match(installerSource, /tmux-new\|skills\/omx-new|install_skill "\$helper_skill"/);
+  assert.match(installerSource, /tmux-new\|skills\/tmux-new/);
   const stackInstallerSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
   assert.match(stackInstallerSource, /--skills hermes-omx-notify,tmux-new,tmux-send,tmux-kill/);
   assert.match(stackInstallerSource, /skills: \['hermes-omx-notify', 'tmux-new', 'tmux-send', 'tmux-kill'\]/);
 });
 
 test('Hermes prompt separates routing metadata from delivered payload instructions', async () => {
-  const skillSource = await readFile(join(process.cwd(), 'skills', 'omx-send', 'SKILL.md'), 'utf8');
+  const skillSource = await readFile(join(process.cwd(), 'skills', 'tmux-send', 'SKILL.md'), 'utf8');
   const operationsSource = await readFile(join(process.cwd(), 'docs', 'operations.md'), 'utf8');
 
-  assert.match(operationsSource, /skills\/tmux-send\/SKILL\.md|skills\/omx-send\/SKILL\.md/);
-  assert.match(operationsSource, /skills\/(?:tmux-send|omx-send)\/SKILL\.md.*의미 보존/s);
+  assert.match(operationsSource, /skills\/tmux-send\/SKILL\.md/);
+  assert.match(operationsSource, /skills\/tmux-send\/SKILL\.md.*의미 보존/s);
 
   for (const source of [skillSource]) {
     assert.match(source, /1[.)]\s*대상 세션(?: 식별)?\/routing metadata.*2[.)]\s*실제 전달(?:할 사용자)? 지시.*3[.)]\s*의미 보존형 작업 지시문.*4[.)]\s*확장.*왜곡 차단/s);

@@ -26,7 +26,7 @@ Hermes / Discord
 - **전체 출력 조회** — 짧은 notification preview가 아니라 최신 assistant/final-answer 원문을 읽습니다.
 - **명령 전달** — bridge audit path를 통해 visible tmux pane에 후속 지시를 전달합니다.
 - **GJC lifecycle 제어** — target checkout에서 `gjc --tmux` / `gjc --tmux --worktree <path>`를 실행하고, 검증된 managed GJC tmux session만 종료합니다.
-- **Helper CLI** — Hermes가 쓰기 쉬운 `omx-new`, `omx-send`, `omx-kill` lifecycle 도구를 설치합니다.
+- **Helper CLI** — Hermes가 쓰기 쉬운 `tmux-new`, `tmux-send`, `tmux-kill` lifecycle 도구를 설치합니다.
 - **Discord delivery** — `AskPermission`, `FinalAnswer`, lifecycle, command event를 Hermes webhook 또는 direct Discord fast path로 전달합니다.
 - **프로젝트 채널 라우팅** — 프로젝트별 Discord channel mapping을 찾거나 만들고 기록합니다.
 
@@ -54,7 +54,7 @@ scripts/install-hermes-stack.sh \
 systemctl --user status hermes-omx-notify.service --no-pager
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
-command -v omx-new omx-send omx-kill
+command -v tmux-new tmux-send tmux-kill
 ```
 
 정상 health 응답:

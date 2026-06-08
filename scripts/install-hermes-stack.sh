@@ -401,7 +401,7 @@ OMX/Codex Discord 알림·제어 라우터.
 
 FinalAnswer 스타일: 설명 문장은 한국어 중심. `Document graph`(문서 그래프), `keyword_fallback`(키워드 fallback 경로)처럼 첫 뜻 병기. 영어 명사구를 한국어 문장 안에 길게 이어 붙이지 않는다. 명령어/경로/env/hash/PID는 backtick. 파일/설정/커밋/테스트는 대표 묶음, 판단에 필요한 식별자 보존.
 
-전용 skill 경계: `hermes-omx-notify`는 bridge read/status/notification rendering만 맡는다. 세션 생성은 `tmux-new`, 전달/승인/거절은 `tmux-send`, 종료는 `tmux-kill` skill을 따른다. `tmux-send` prompt refinement 규칙은 `skills/omx-send/SKILL.md`에 있으며, temp file/write_file을 쓰더라도 원문 Discord reply가 아니라 정제된 prompt만 기록해야 한다. Discord-originated Hermes dispatch는 정제된 prompt를 바로 보내지 말고 `tmux-send --discord-approval`로 bridge-managed `tmux-send-approval` question을 만든 다음 `clarify`/AskUserQuestion으로 실제 Discord 승인 카드를 렌더링해야 한다.
+전용 skill 경계: `hermes-omx-notify`는 bridge read/status/notification rendering만 맡는다. 세션 생성은 `tmux-new`, 전달/승인/거절은 `tmux-send`, 종료는 `tmux-kill` skill을 따른다. `tmux-send` prompt refinement 규칙은 `skills/tmux-send/SKILL.md`에 있으며, temp file/write_file을 쓰더라도 원문 Discord reply가 아니라 정제된 prompt만 기록해야 한다. Discord-originated Hermes dispatch는 정제된 prompt를 바로 보내지 말고 `tmux-send --discord-approval`로 bridge-managed `tmux-send-approval` question을 만든 다음 `clarify`/AskUserQuestion으로 실제 Discord 승인 카드를 렌더링해야 한다.
 
 원문 그대로 요청: summary 없이 `fullText` 그대로. `payload.message_markdown`, `payload.text_preview`, 알림 조각/tmux capture로 재구성하지 않는다. 전체 원문을 새 ```markdown 코드블럭으로 감싸지 않고, 브리지가 이미 나눈 조각을 순서대로 보내며 markdown fence 보존, 모든 조각 끝 `(i/N)`, 제목 반복 금지. `fullText` 조회 실패/빈 값은 실패 명시.
 

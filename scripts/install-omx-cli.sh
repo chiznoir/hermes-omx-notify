@@ -24,7 +24,7 @@ Options:
 
 Notes:
   - This installer manages only canonical tmux-new, tmux-send, and tmux-kill.
-  - Repository bin/omx-* files remain non-canonical compatibility shims on this branch.
+  - Repository bin/omx-* files are legacy compatibility wrappers; tmux-* are canonical.
   - It does not install or modify Codex global hooks.
   - Keep the target directory on PATH for Hermes/Gateway workers.
 USAGE
@@ -56,9 +56,9 @@ path_contains_dir() {
 
 source_tool_for() {
   case "$1" in
-    tmux-new) printf 'omx-new' ;;
-    tmux-send) printf 'omx-send' ;;
-    tmux-kill) printf 'omx-kill' ;;
+    tmux-new) printf 'tmux-new' ;;
+    tmux-send) printf 'tmux-send' ;;
+    tmux-kill) printf 'tmux-kill' ;;
     *) return 1 ;;
   esac
 }

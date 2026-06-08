@@ -88,9 +88,9 @@ Hermes가 visible session을 만들 때는 raw `gjc` 직접 실행 대신 `tmux-
 
 - `scripts/install-hermes-stack.sh`: `subscription_prompt` 원본입니다. 설치 후 `~/.hermes/webhook_subscriptions.json`에 저장됩니다.
 - `skills/hermes-omx-notify/SKILL.md`: bridge read/status/notification rendering 규칙입니다.
-- `skills/omx-new/SKILL.md`: 새 OMX lifecycle session 생성 규칙입니다.
-- `skills/omx-send/SKILL.md`: 기존 session 전달, 의미 보존, routing metadata 제거, Discord approval flow 규칙입니다.
-- `skills/omx-kill/SKILL.md`: session 종료 규칙입니다.
+- `skills/tmux-new/SKILL.md`: 새 GJC tmux lifecycle session 생성 규칙입니다.
+- `skills/tmux-send/SKILL.md`: 기존 session 전달, 의미 보존, routing metadata 제거, Discord approval flow 규칙입니다.
+- `skills/tmux-kill/SKILL.md`: session 종료 규칙입니다.
 - `src/hermes-webhook-sink.js`: `AskPermission`/`FinalAnswer` payload와 delivery 경계입니다.
 - `src/server.js`: `POST /sessions/:id/commands`, approval question, `CommandSubmitted` / `User Command` event 경계입니다.
 

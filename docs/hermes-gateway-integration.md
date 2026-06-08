@@ -75,7 +75,7 @@ Hermes webhook subscription은 `scripts/install-hermes-stack.sh`의 `subscriptio
 scripts/install-hermes-stack.sh --webhook --restart --non-interactive
 ```
 
-수동 `hermes webhook subscribe`가 필요하면 `scripts/install-hermes-stack.sh`의 현재 `subscription_prompt` 내용을 사용하세요. 현재 subscription은 `hermes-omx-notify,tmux-new,tmux-send,tmux-kill` 네 skill을 함께 로드하며, prompt에는 `CommandSubmitted`/`User Command` 원문 알림, `FinalAnswer` 요약/direct 전달, 긴 `FinalAnswer` 분할 시 첫 조각만 제목을 표시하고 모든 조각 끝에 `(i/N)`을 붙이는 규칙, `원문 그대로` 예외, Discord-originated dispatch의 `tmux-send --discord-approval` + Hermes `clarify` 승인 카드 gate, 그리고 생성/전달/종료 intent를 각각 `tmux-new`, `tmux-send`, `tmux-kill`로 넘기는 경계 규칙이 포함됩니다. `tmux-send` 전달 프롬프트의 routing metadata/payload instruction 분리와 의미 보존형 실행 지시 정제 규칙은 `skills/omx-send/SKILL.md`에 정리되어 있습니다.
+수동 `hermes webhook subscribe`가 필요하면 `scripts/install-hermes-stack.sh`의 현재 `subscription_prompt` 내용을 사용하세요. 현재 subscription은 `hermes-omx-notify,tmux-new,tmux-send,tmux-kill` 네 skill을 함께 로드하며, prompt에는 `CommandSubmitted`/`User Command` 원문 알림, `FinalAnswer` 요약/direct 전달, 긴 `FinalAnswer` 분할 시 첫 조각만 제목을 표시하고 모든 조각 끝에 `(i/N)`을 붙이는 규칙, `원문 그대로` 예외, Discord-originated dispatch의 `tmux-send --discord-approval` + Hermes `clarify` 승인 카드 gate, 그리고 생성/전달/종료 intent를 각각 `tmux-new`, `tmux-send`, `tmux-kill`로 넘기는 경계 규칙이 포함됩니다. `tmux-send` 전달 프롬프트의 routing metadata/payload instruction 분리와 의미 보존형 실행 지시 정제 규칙은 `skills/tmux-send/SKILL.md`에 정리되어 있습니다.
 
 ## Project channel map
 
