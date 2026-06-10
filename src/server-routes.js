@@ -22,6 +22,13 @@ import {
   latestApprovalDecision,
   readApprovalDecisions,
 } from './omx-send-approvals.js';
+import {
+  cancelGjcWorkflow,
+  completeGjcWorkflow,
+  createGjcWorkflow,
+  getGjcWorkflow,
+  workflowLockKeyFromBody,
+} from './gjc-workflows.js';
 
 const COMMAND_SUBMITTED_EVENT_TYPES = new Set(['CommandSubmitted']);
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -735,6 +742,96 @@ async function sendGjcSessionsRoute({ req, res, parts, projectRoot, options, loc
   }
 }
 
+async function sendGjcWorkflowsRoute({ req, res, parts, projectRoot, options, lockManager, json }) {
+  if (!(parts[0] === 'gjc' && parts[1] === 'workflows')) return false;
+
+  if (req.method === 'POST' && parts.length === 2) {
+    const body = await readJsonBody(req);
+    const lockKey = workflowLockKeyFromBody(body, { ...options, projectRoot });
+    const lock = lockManager.acquire(lockKey, { operation: 'gjc-workflow-create' });
+    if (!lock.ok) {
+      await appendAudit('gjc.workflow.lock_conflict', { lockKey, error: 'gjc workflow already in progress' }, { projectRoot });
+      json(res, 409, { error: 'gjc workflow already in progress' });
+      return true;
+    }
+    try {
+      const result = await createGjcWorkflow(body, { ...options, projectRoot });
+      await appendAudit(result.ok ? 'gjc.workflow.accepted' : 'gjc.workflow.failed', {
+        lockKey,
+        workflowId: result.workflow?.workflowId || body.workflowId || null,
+        state: result.workflow?.state || null,
+        error: result.error || result.workflow?.failureReason || null,
+      }, { projectRoot });
+      json(res, result.status || (result.ok ? 202 : 400), result.ok ? {
+        workflow: result.workflow,
+        duplicate: result.duplicate === true,
+        next: {
+          sessionsEndpoint: '/sessions',
+          dispatchMode: 'tmux',
+          resultSource: 'gjc-jsonl',
+        },
+      } : { error: result.error || result.workflow?.failureReason, workflow: result.workflow });
+      return true;
+    } finally {
+      lock.release?.();
+    }
+  }
+
+  if (req.method === 'GET' && parts.length === 3) {
+    const result = await getGjcWorkflow(parts[2], { ...options, projectRoot });
+    json(res, result.status, result.ok ? { workflow: result.workflow } : { error: result.error });
+    return true;
+  }
+
+  if (req.method === 'POST' && parts[3] === 'complete' && parts.length === 4) {
+    const body = await readJsonBody(req);
+    const lockKey = `gjc-workflow:${parts[2]}`;
+    const lock = lockManager.acquire(lockKey, { operation: 'gjc-workflow-complete' });
+    if (!lock.ok) {
+      await appendAudit('gjc.workflow.lock_conflict', { lockKey, workflowId: parts[2], error: 'gjc workflow already in progress' }, { projectRoot });
+      json(res, 409, { error: 'gjc workflow already in progress' });
+      return true;
+    }
+    try {
+      const result = await completeGjcWorkflow(parts[2], body, { ...options, projectRoot });
+      await appendAudit(result.ok ? 'gjc.workflow.completed' : 'gjc.workflow.completion_failed', {
+        workflowId: parts[2],
+        state: result.workflow?.state || null,
+        phase: result.workflow?.phase || null,
+        error: result.error || result.workflow?.failureReason || null,
+      }, { projectRoot });
+      json(res, result.status, result.ok ? { workflow: result.workflow } : { error: result.error || result.workflow?.failureReason, workflow: result.workflow });
+    } finally {
+      lock.release?.();
+    }
+    return true;
+  }
+
+  if (req.method === 'POST' && parts[3] === 'cancel' && parts.length === 4) {
+    const lockKey = `gjc-workflow:${parts[2]}`;
+    const lock = lockManager.acquire(lockKey, { operation: 'gjc-workflow-cancel' });
+    if (!lock.ok) {
+      await appendAudit('gjc.workflow.lock_conflict', { lockKey, workflowId: parts[2], error: 'gjc workflow already in progress' }, { projectRoot });
+      json(res, 409, { error: 'gjc workflow already in progress' });
+      return true;
+    }
+    try {
+      const result = await cancelGjcWorkflow(parts[2], { ...options, projectRoot });
+      await appendAudit(result.ok ? 'gjc.workflow.cancelled' : 'gjc.workflow.cancel_failed', {
+        workflowId: parts[2],
+        state: result.workflow?.state || null,
+        error: result.error || null,
+      }, { projectRoot });
+      json(res, result.status, result.ok ? { workflow: result.workflow } : { error: result.error, workflow: result.workflow });
+    } finally {
+      lock.release?.();
+    }
+    return true;
+  }
+
+  return false;
+}
+
 async function sendProjectChannelRoute({ req, res, parts, projectRoot, json }) {
   if (!(parts[0] === 'projects' && parts[1] && parts[2] === 'channel' && parts.length === 3)) return false;
   const project = parts[1];
@@ -972,6 +1069,7 @@ async function sendSessionRoute({ req, res, parts, indexOptions, projectRoot, op
 export async function dispatchBridgeRoute(context) {
   return await sendAuditRoute(context)
     || await sendSessionsRoute(context)
+    || await sendGjcWorkflowsRoute(context)
     || await sendGjcSessionsRoute(context)
     || await sendProjectChannelRoute(context)
     || await sendSessionRoute(context);
