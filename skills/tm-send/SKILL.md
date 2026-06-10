@@ -25,7 +25,7 @@ This dispatch-specific skill exists because Hermes may load `tm-send` directly w
 
 Use `tm-send` to dispatch commands through hermes-omx-notify. Do not hand-build raw bridge `curl` calls. Do not silently fall back to unmanaged tmux paste; if bridge delivery fails, report the explicit failure unless the user explicitly asked for the managed `--tmux` path.
 
-For Discord-originated Hermes replies that dispatch a refined prompt into an existing session, use `tm-send --session <id> --discord-approval "<refined prompt>"`, then immediately present the returned approval question through Hermes `clarify` / AskUserQuestion. The bridge command only registers the pending approval; it does **not** by itself create Discord buttons. The Discord button/card is real only after Hermes calls `clarify` with the refined prompt and choices. Non-Discord/manual helper use may keep plain `tm-send --session <id>` when the user intentionally wants immediate dispatch.
+For Discord-originated Hermes replies that dispatch a refined prompt into an existing session, use `tm-send --session <id> --discord-approval "<refined prompt>"`, then immediately present the returned approval question through Hermes `clarify` / AskUserQuestion. Do not use `--project` with `--discord-approval`, even when `--session` is also available; Discord-origin approval dispatch is session-only and must not rely on project/latest-session fallback. The bridge command only registers the pending approval; it does **not** by itself create Discord buttons. The Discord button/card is real only after Hermes calls `clarify` with the refined prompt and choices. Non-Discord/manual helper use may keep plain `tm-send --session <id>` or non-approval `tm-send --project <project>` when the user intentionally wants immediate dispatch.
 
 ## Target selection
 
@@ -92,6 +92,8 @@ If line breaks matter, a temp file is allowed, but the temp file content must be
 ## Discord approval gate
 
 - Discord reply → Hermes → existing GJC/bridge session dispatch MUST prefer `tm-send --discord-approval` after prompt refinement.
+- Discord-origin approval dispatch MUST be session-only: `tm-send --session <bridgeSessionId> --discord-approval "<refined prompt>"`.
+- Do not call `tm-send --project <project> --discord-approval ...`, and do not combine `--session` and `--project` on the approval path. If only project metadata is available, resolve the concrete bridge session first or fail closed.
 - The approval gate is not a second refinement policy. It displays the already-refined prompt and waits for the operator's 전송/거절/추가수정 decision.
 - Important: `tm-send --discord-approval` only creates bridge pending state and returns `answer_endpoint`, `question.questionId`, and `component_actions`. Hermes Gateway does not automatically render arbitrary terminal-tool JSON `component_actions` as Discord buttons.
 - Therefore after `delivery.status == "approval-pending"`, Hermes MUST call the native user-question UI (`clarify` / AskUserQuestion) with the exact refined prompt and choices `전송`, `거절`, `추가수정`. This is the same Gateway path that renders Ouroboros-style Discord cards/buttons.
@@ -103,6 +105,20 @@ If line breaks matter, a temp file is allowed, but the temp file content must be
 - 추가수정 means Hermes must use the returned edit text as a 재정제/new refinement request and create a new approval-gated `tm-send`; do not dispatch the old prompt after a modify answer.
 - AskPermission approval remains separate. `/approve` and `/deny` still use `tm-send --mode tmux` for the same `bridge_session_id`, not `--discord-approval`.
 - Do not make every local/manual `tm-send` approval-gated. The gate is for Discord-originated Hermes dispatch unless the user explicitly asks for another approval path.
+
+### Optional minimal prompt frame
+
+Use this only when it helps clarify a non-trivial refined prompt. Do not force it onto short/simple replies, and do not add facts the user did not provide.
+
+```text
+Task: <핵심 요청>
+Context: <repo/session/thread 맥락 1줄 이하>
+Constraints: <금지/주의 1~3개>
+Success: <완료 기준 1~3개>
+Verify: <확인 명령/증거 1~3개>
+```
+
+This frame is refinement guidance only. Do not implement a code-level template engine, and do not use the frame to rewrite GJC/OMX final notify output.
 
 ## Examples
 

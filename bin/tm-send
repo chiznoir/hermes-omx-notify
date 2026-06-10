@@ -121,6 +121,10 @@ fi
 if [[ -n "$approval_answer" && ! "$approval_answer" =~ ^(send|reject|modify)$ ]]; then
   die '--answer-approval must be one of send|reject|modify'
 fi
+if [[ -n "$approval_gate" ]]; then
+  [[ -z "$project" ]] || die '--discord-approval forbids --project; approval dispatch target must be session-only'
+  [[ -n "$session_id" ]] || die '--discord-approval requires --session; refusing project fallback for Discord-origin dispatch'
+fi
 
 if [[ -n "$tmux_target" ]]; then
   [[ "$list_only" -eq 0 ]] || die '--list cannot be combined with --tmux'

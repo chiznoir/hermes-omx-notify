@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdtemp, mkdir, readFile, writeFile, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { promisify } from 'node:util';
 import { createServer } from '../src/server.js';
 import {
   closeEventIndex,
@@ -13,6 +15,8 @@ import {
   pendingEvents,
   upsertEvents,
 } from '../src/control-plane/event-index.js';
+
+const execFileAsync = promisify(execFile);
 
 async function requestRaw(server, path, options = {}) {
   await new Promise((resolve) => server.listen(0, resolve));
@@ -28,6 +32,24 @@ async function requestRaw(server, path, options = {}) {
 
 function prettyJson(value) {
   return JSON.stringify(value, null, 2);
+}
+
+async function runHelper(args, env) {
+  try {
+    const result = await execFileAsync('bin/tm-send', args, { env });
+    return { code: 0, stdout: result.stdout, stderr: result.stderr };
+  } catch (error) {
+    return {
+      code: error.code ?? 1,
+      stdout: error.stdout ?? '',
+      stderr: error.stderr ?? '',
+    };
+  }
+}
+
+async function readCurlCalls(logPath) {
+  const raw = await readFile(logPath, 'utf8');
+  return raw.split('\n').filter((line) => line === 'CALL').length;
 }
 
 test('raw HTTP JSON responses preserve pretty body, content-type, content-length, auth, and error quirks', async () => {
@@ -83,6 +105,60 @@ test('helper CLI scripts keep bridge API selection and payload contracts visible
   assert.match(kill, /select\(\.project==\$project and \.status!="ended" and \(\.tmuxId != null\)\)/);
   assert.match(kill, /non-interactive use requires --force/);
   assert.match(kill, /tmux kill-session -t "\$managed_session_name"/);
+});
+
+test('tm-send approval dispatch is session-only before any curl side effect', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tm-send-approval-cli-'));
+  const curlLog = join(root, 'curl.log');
+  const fakeCurl = join(root, 'curl');
+  await writeFile(curlLog, '');
+  await writeFile(fakeCurl, `#!/usr/bin/env bash
+set -euo pipefail
+{
+  printf 'CALL\\n'
+  printf '%s\\n' "$@"
+} >> "$CURL_LOG"
+if [[ "$*" == *'/sessions?activity=false'* ]]; then
+  printf '{"sessions":[{"bridgeSessionId":"sess-project","project":"demo","status":"active","tmuxId":"tmux-1","lastEventAt":"2026-06-10T00:00:00.000Z"}]}'
+else
+  printf '{"ok":true}'
+fi
+`);
+  await chmod(fakeCurl, 0o755);
+  const env = {
+    ...process.env,
+    PATH: `${root}:${process.env.PATH ?? ''}`,
+    CURL_LOG: curlLog,
+    OMX_BRIDGE_URL: 'http://bridge.test',
+  };
+
+  const missingSession = await runHelper(['--discord-approval', 'hello'], env);
+  assert.notEqual(missingSession.code, 0);
+  assert.match(missingSession.stderr, /--discord-approval requires --session/);
+
+  const projectOnly = await runHelper(['--project', 'demo', '--discord-approval', 'hello'], env);
+  assert.notEqual(projectOnly.code, 0);
+  assert.match(projectOnly.stderr, /--discord-approval forbids --project/);
+
+  const mixedTarget = await runHelper(['--session', 'sess-123', '--project', 'demo', '--discord-approval', 'hello'], env);
+  assert.notEqual(mixedTarget.code, 0);
+  assert.match(mixedTarget.stderr, /--discord-approval forbids --project/);
+
+  assert.equal(await readCurlCalls(curlLog), 0);
+
+  const validApproval = await runHelper(['--session', 'sess-123', '--discord-approval', 'hello'], env);
+  assert.equal(validApproval.code, 0);
+  let log = await readFile(curlLog, 'utf8');
+  assert.equal(await readCurlCalls(curlLog), 1);
+  assert.match(log, /http:\/\/bridge\.test\/sessions\/sess-123\/commands/);
+  assert.match(log, /"approvalGate":\s*"discord-hermes-tmux-send"/);
+
+  const nonApprovalProject = await runHelper(['--project', 'demo', 'hello'], env);
+  assert.equal(nonApprovalProject.code, 0);
+  log = await readFile(curlLog, 'utf8');
+  assert.equal(await readCurlCalls(curlLog), 3);
+  assert.match(log, /http:\/\/bridge\.test\/sessions[?]activity=false&limit=50/);
+  assert.match(log, /http:\/\/bridge\.test\/sessions\/sess-project\/commands/);
 });
 
 test('event-index schema and delivery transition columns stay contract-frozen', async () => {
