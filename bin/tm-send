@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-script_name="$(basename "$0")"
-canonical_name="tm-send"
 bridge_url="${OMX_BRIDGE_URL:-http://127.0.0.1:3037}"
 token="${OMX_BRIDGE_TOKEN:-}"
 session_id=""

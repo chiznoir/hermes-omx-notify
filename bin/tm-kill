@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-script_name="$(basename "$0")"
-canonical_name="tm-kill"
 bridge_url="${OMX_BRIDGE_URL:-http://127.0.0.1:3037}"
 token="${OMX_BRIDGE_TOKEN:-}"
 session_id=""
@@ -108,6 +106,3 @@ fi
 
 tmux kill-session -t "$managed_session_name"
 log "managed tmux session killed: $managed_session_name"
-if [[ "$script_name" != "$canonical_name" ]]; then
-  log "legacy shim in use: $script_name is non-canonical on gajae-version"
-fi

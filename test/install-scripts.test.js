@@ -7,6 +7,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const execFile = promisify(execFileCallback);
+const legacyHelperHashes = {
+  'omx-new': '26cf5acba826c6831721a674c92d260cd1dc3b5a936d42978f80bc869e6b2b0f',
+  'omx-send': '0d988aa05f0a2214990b0af8ba270895c03b7c68b2720d75ce4af510c06dd0ee',
+  'omx-kill': '5618748fac135610dce2185f449d67a0260a895b120bb2e9fdd5dda570d1f2e9',
+  'tmux-new': '3a635c6a9d9433778d19ff7417b5dd3115de4854b6efc8eaf01eeaaacadb267e',
+  'tmux-send': '790bcddae17086ba74d07203bcc0c61add5647e8773bb21fb6b734d4532ed0eb',
+  'tmux-kill': 'c27a724af232a5f4a85eb5a1041d63fd010c244575143e3585c2c26708660df7',
+};
 
 async function seedLegacyHelperSymlinks(targetDir) {
   await mkdir(targetDir, { recursive: true });
@@ -15,12 +23,33 @@ async function seedLegacyHelperSymlinks(targetDir) {
   }
 }
 
+async function installLegacyHashFixture(env) {
+  const fakeBin = join(env.HOME, 'fake-bin');
+  await mkdir(fakeBin, { recursive: true });
+  const realSha256sum = (await execFile('bash', ['-lc', 'command -v sha256sum'], { env })).stdout.trim();
+  const cases = Object.entries(legacyHelperHashes)
+    .map(([name, hash]) => `    ${name}) echo "${hash}  $file"; exit 0 ;;`)
+    .join('\n');
+  await writeFile(join(fakeBin, 'sha256sum'), `#!/usr/bin/env bash
+set -euo pipefail
+file="$1"
+base="$(basename "$file")"
+if grep -qx "managed legacy fixture: $base" "$file" 2>/dev/null; then
+  case "$base" in
+${cases}
+  esac
+fi
+exec ${JSON.stringify(realSha256sum)} "$@"
+`);
+  await chmod(join(fakeBin, 'sha256sum'), 0o755);
+  env.PATH = `${fakeBin}:${env.PATH}`;
+}
+
 async function seedLegacyHelperCopies(targetDir) {
   await mkdir(targetDir, { recursive: true });
-  for (const name of ['omx-new', 'omx-send', 'omx-kill', 'tmux-new', 'tmux-send', 'tmux-kill']) {
-    const { stdout } = await execFile('git', ['show', `HEAD:bin/${name}`], { cwd: process.cwd(), maxBuffer: 1024 * 1024 });
+  for (const name of Object.keys(legacyHelperHashes)) {
     const target = join(targetDir, name);
-    await writeFile(target, stdout);
+    await writeFile(target, `managed legacy fixture: ${name}\n`);
     await chmod(target, 0o755);
   }
 }
@@ -206,6 +235,7 @@ test('install-omx-cli installs canonical tm helper symlinks and leaves old alias
 test('install-omx-cli removes known legacy copied helpers but preserves non-managed legacy files', async () => {
   const env = await tempEnv();
   const targetDir = join(env.HOME, 'bin');
+  await installLegacyHashFixture(env);
   await seedLegacyHelperCopies(targetDir);
   await writeFile(join(targetDir, 'custom-note'), 'not touched\n');
   const { stdout } = await execFile('bash', [

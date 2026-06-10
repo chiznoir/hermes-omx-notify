@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-script_name="$(basename "$0")"
 canonical_name="tm-new"
 project_dir="$PWD"
 session_name=""
@@ -334,9 +333,6 @@ if [[ "$print_json" -eq 1 ]]; then
 else
   log "managed GJC tmux session created: $session_name ($pane_id)"
   log "canonical helper: $canonical_name"
-  if [[ "$script_name" != "$canonical_name" ]]; then
-    log "legacy shim in use: $script_name is non-canonical on gajae-version"
-  fi
   log "project: $project_dir"
   log "command: ${cmd[*]}"
   log "bridge endpoint: ${OMX_BRIDGE_URL:-http://127.0.0.1:3037}/sessions"
