@@ -2,7 +2,7 @@
 set -euo pipefail
 
 script_name="$(basename "$0")"
-canonical_name="tmux-kill"
+canonical_name="tm-kill"
 bridge_url="${OMX_BRIDGE_URL:-http://127.0.0.1:3037}"
 token="${OMX_BRIDGE_TOKEN:-}"
 session_id=""
@@ -17,17 +17,15 @@ managed_project=""
 usage() {
   cat <<'USAGE'
 Usage:
-  tmux-kill --session SESSION_ID [--force]
-  tmux-kill --project PROJECT [--force]
-  tmux-kill --tmux TMUX_TARGET [--force]
-  omx-kill  [same options]  # legacy compatibility shim; non-canonical on gajae-version
+  tm-kill --session SESSION_ID [--force]
+  tm-kill --project PROJECT [--force]
+  tm-kill --tmux TMUX_TARGET [--force]
 
 Description:
-  Canonical helper on gajae-version is tmux-kill.
+  Canonical helper on gajae-version is tm-kill.
   The final action is local tmux kill-session, but only for managed GJC sessions.
   Direct --tmux targets must already carry verified GJC ownership tags:
     @gjc-profile=1, @gjc-branch=gjc, @gjc-branch-slug, @gjc-project
-  If invoked as omx-kill, treat that filename as a non-canonical compatibility shim only.
 USAGE
 }
 

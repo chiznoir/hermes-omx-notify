@@ -1,44 +1,44 @@
 ---
-name: tmux-send
-description: Send a refined follow-up instruction to an existing GJC/bridge session through hermes-omx-notify using the local tmux-send helper. Trigger when the user asks to 전달/보내/넘겨/반영/수정/계속 into a managed session or replies to a bridge notification.
+name: tm-send
+description: Send a refined follow-up instruction to an existing GJC/bridge session through hermes-omx-notify using the local tm-send helper. Trigger when the user asks to 전달/보내/넘겨/반영/수정/계속 into a managed session or replies to a bridge notification.
 version: 0.2.0
 prerequisites:
-  commands: [tmux-send]
+  commands: [tm-send]
 metadata:
   hermes:
     tags: [omx, bridge, command, codex, tmux]
-    related_skills: [hermes-omx-notify, tmux-new, tmux-kill]
+    related_skills: [hermes-omx-notify, tm-new, tm-kill]
     requires_toolsets: [terminal]
     triggers:
-      - 전달, 전달해, 보내, 넘겨, 세션에 전달, follow-up -> tmux-send
-      - 세션에 넣어, 답장하기, 위 내용 전달, 답장으로 보낸 거, 방금 알림에 대한 말 -> tmux-send
-      - 반영, 수정, 고쳐, 계속, 진행, 이거 반영, 알림 reply, 알림에 답장, Notification reply -> tmux-send
-      - Discord-originated Hermes reply dispatch -> tmux-send --discord-approval
-      - AskPermission 승인/거절, /approve, /deny -> tmux-send --mode tmux
-      - 새 세션, 세션 열어, 시작해 -> use tmux-new instead
-      - 종료, kill, 킬, 죽여 -> use tmux-kill instead
+      - 전달, 전달해, 보내, 넘겨, 세션에 전달, follow-up -> tm-send
+      - 세션에 넣어, 답장하기, 위 내용 전달, 답장으로 보낸 거, 방금 알림에 대한 말 -> tm-send
+      - 반영, 수정, 고쳐, 계속, 진행, 이거 반영, 알림 reply, 알림에 답장, Notification reply -> tm-send
+      - Discord-originated Hermes reply dispatch -> tm-send --discord-approval
+      - AskPermission 승인/거절, /approve, /deny -> tm-send --mode tmux
+      - 새 세션, 세션 열어, 시작해 -> use tm-new instead
+      - 종료, kill, 킬, 죽여 -> use tm-kill instead
 ---
 
-# Tmux Send
+# TM Send
 
-This dispatch-specific skill exists because Hermes may load `tmux-send` directly when the user names that skill or replies to a session notification. `hermes-omx-notify` handles bridge read/status/rendering; this file describes the dispatch rules so direct `skill_view("tmux-send")` does not bypass prompt refinement.
+This dispatch-specific skill exists because Hermes may load `tm-send` directly when the user names that skill or replies to a session notification. `hermes-omx-notify` handles bridge read/status/rendering; this file describes the dispatch rules so direct `skill_view("tm-send")` does not bypass prompt refinement.
 
-Use `tmux-send` to dispatch commands through hermes-omx-notify. Do not hand-build raw bridge `curl` calls. Do not silently fall back to unmanaged tmux paste; if bridge delivery fails, report the explicit failure unless the user explicitly asked for the managed `--tmux` path.
+Use `tm-send` to dispatch commands through hermes-omx-notify. Do not hand-build raw bridge `curl` calls. Do not silently fall back to unmanaged tmux paste; if bridge delivery fails, report the explicit failure unless the user explicitly asked for the managed `--tmux` path.
 
-For Discord-originated Hermes replies that dispatch a refined prompt into an existing session, use `tmux-send --session <id> --discord-approval "<refined prompt>"`, then immediately present the returned approval question through Hermes `clarify` / AskUserQuestion. The bridge command only registers the pending approval; it does **not** by itself create Discord buttons. The Discord button/card is real only after Hermes calls `clarify` with the refined prompt and choices. Non-Discord/manual helper use may keep plain `tmux-send --session <id>` when the user intentionally wants immediate dispatch.
+For Discord-originated Hermes replies that dispatch a refined prompt into an existing session, use `tm-send --session <id> --discord-approval "<refined prompt>"`, then immediately present the returned approval question through Hermes `clarify` / AskUserQuestion. The bridge command only registers the pending approval; it does **not** by itself create Discord buttons. The Discord button/card is real only after Hermes calls `clarify` with the refined prompt and choices. Non-Discord/manual helper use may keep plain `tm-send --session <id>` when the user intentionally wants immediate dispatch.
 
 ## Target selection
 
 - In Discord replies, route by the replied notification metadata first: `bridge_session_id`, `session:`, `tmux:`, `project:`, `omxSessionId`, `codexThreadId`.
-- If a concrete bridge session id is present, use `tmux-send --session <id>`.
-- If only `tmux:` is present, resolve the active bridge session for that exact tmux id with `tmux-send --list`; do not choose another same-project session.
+- If a concrete bridge session id is present, use `tm-send --session <id>`.
+- If only `tmux:` is present, resolve the active bridge session for that exact tmux id with `tm-send --list`; do not choose another same-project session.
 - Routing labels are target metadata only. Remove them from the prompt sent to Codex.
 - Typical routing labels/operators include `bridge_session_id`, `tmux id`, `bridge session id`, Korean phrases like `이 세션에 전달해`, an explicit session name such as `세션명은 X`, and `X 세션에 넣어`; these are not prompt content and must be removed from the delivered work sentence.
 - Remove routing metadata from the prompt sent to Codex; 프롬프트 본문에 넣지 말고 작업 문장에서는 제거한다.
 
-## Prompt refinement before `tmux-send`
+## Prompt refinement before `tm-send`
 
-The exact argument passed to `tmux-send` MUST already be the refined prompt. Do not pass the raw Discord reply, raw `[Replying to: ...]` wrapper, or raw operator command and expect Codex to infer the real task.
+The exact argument passed to `tm-send` MUST already be the refined prompt. Do not pass the raw Discord reply, raw `[Replying to: ...]` wrapper, or raw operator command and expect Codex to infer the real task.
 
 Priority order:
 
@@ -49,7 +49,7 @@ Priority order:
 
 Do not mix roles: target selection, payload extraction, and prompt refinement are separate steps.
 
-Before any `write_file`, temp-file handoff, shell command, or `tmux-send` invocation:
+Before any `write_file`, temp-file handoff, shell command, or `tm-send` invocation:
 
 1. Extract the payload instruction only. Remove Discord/Hermes wrappers such as `[Replying to: ...]`, `[치즈] 이 메시지를 ...에 전달해`, `이 세션에 전달해`, `세션명은 X`, `bridge_session_id`, `tmux id`, and `project:` unless they are part of the user's actual task.
 2. Strip operator prefixes and meta framing such as `전달`, `추가 전달:`, `치즈전달:`, `치즈 질문:`, `치즈 지시:`, `치즈가 전달하래`, `치즈가 물었어`, `사용자 요청:`, `사용자요청:`, `User says:`, `follow-up:`, `the user asked`, and `방금 네 Final Answer에 대해 이렇게 물었어:`.
@@ -81,7 +81,7 @@ Forbidden in the delivered prompt:
 - If the user is angry because a prior dispatch changed meaning, stop elaborating. Acknowledge internally by sending only the corrected minimal payload; do not bundle “helpful” guardrails or broadened acceptance criteria into the resend.
 - When the user says a previous dispatch was wrong and asks to resend/re-deliver, preserve the correction narrowly. Do not “improve” the corrected request by adding extra files, validation steps, manifests, contact sheets, prohibitions, or operational criteria unless the user explicitly restates them. The safe resend shape is usually one direct sentence plus only the minimal target/path needed to disambiguate.
 
-Use `tmux-send --raw` only when the user explicitly requests near byte-for-byte delivery with phrases such as “원문 그대로”, “그대로 전달”, “다음 그대로 전달”, `raw`, or equivalent.
+Use `tm-send --raw` only when the user explicitly requests near byte-for-byte delivery with phrases such as “원문 그대로”, “그대로 전달”, “다음 그대로 전달”, `raw`, or equivalent.
 
 Raw-mode extraction still has a boundary: send the user-designated payload, not the entire Discord/operator wrapper. If the user says “다음 그대로 전달”, the raw payload begins after that marker. Do not include `[Replying to: ...]`, `[치즈]`, target metadata used only for routing, or the operator phrase itself unless the user explicitly says those wrappers are part of the payload.
 
@@ -91,18 +91,18 @@ If line breaks matter, a temp file is allowed, but the temp file content must be
 
 ## Discord approval gate
 
-- Discord reply → Hermes → existing GJC/bridge session dispatch MUST prefer `tmux-send --discord-approval` after prompt refinement.
+- Discord reply → Hermes → existing GJC/bridge session dispatch MUST prefer `tm-send --discord-approval` after prompt refinement.
 - The approval gate is not a second refinement policy. It displays the already-refined prompt and waits for the operator's 전송/거절/추가수정 decision.
-- Important: `tmux-send --discord-approval` only creates bridge pending state and returns `answer_endpoint`, `question.questionId`, and `component_actions`. Hermes Gateway does not automatically render arbitrary terminal-tool JSON `component_actions` as Discord buttons.
+- Important: `tm-send --discord-approval` only creates bridge pending state and returns `answer_endpoint`, `question.questionId`, and `component_actions`. Hermes Gateway does not automatically render arbitrary terminal-tool JSON `component_actions` as Discord buttons.
 - Therefore after `delivery.status == "approval-pending"`, Hermes MUST call the native user-question UI (`clarify` / AskUserQuestion) with the exact refined prompt and choices `전송`, `거절`, `추가수정`. This is the same Gateway path that renders Ouroboros-style Discord cards/buttons.
 - Do not answer the user with “승인 요청을 올려뒀어”, “버튼에서 전송 누르면 돼”, or similar unless the `clarify` call actually succeeded and is waiting for the user's choice. If `clarify` is unavailable or returns an error, report that the approval UI failed; do not claim buttons exist.
 - After the user chooses in `clarify`, submit the result through the helper, not a hand-built dispatch curl:
-  - `전송` → `tmux-send --session <id> --answer-approval send --question-id <questionId>`
-  - `거절` → `tmux-send --session <id> --answer-approval reject --question-id <questionId>`
-  - `추가수정` or an Other/free-text answer → collect the edit text with a second open-ended `clarify` if needed, close the old pending question with `tmux-send --session <id> --answer-approval modify --question-id <questionId> --edit "<edit text>"`, run prompt refinement again, and create a new approval-gated `tmux-send`; do not dispatch the old prompt after a modify answer.
-- 추가수정 means Hermes must use the returned edit text as a 재정제/new refinement request and create a new approval-gated `tmux-send`; do not dispatch the old prompt after a modify answer.
-- AskPermission approval remains separate. `/approve` and `/deny` still use `tmux-send --mode tmux` for the same `bridge_session_id`, not `--discord-approval`.
-- Do not make every local/manual `tmux-send` approval-gated. The gate is for Discord-originated Hermes dispatch unless the user explicitly asks for another approval path.
+  - `전송` → `tm-send --session <id> --answer-approval send --question-id <questionId>`
+  - `거절` → `tm-send --session <id> --answer-approval reject --question-id <questionId>`
+  - `추가수정` or an Other/free-text answer → collect the edit text with a second open-ended `clarify` if needed, close the old pending question with `tm-send --session <id> --answer-approval modify --question-id <questionId> --edit "<edit text>"`, run prompt refinement again, and create a new approval-gated `tm-send`; do not dispatch the old prompt after a modify answer.
+- 추가수정 means Hermes must use the returned edit text as a 재정제/new refinement request and create a new approval-gated `tm-send`; do not dispatch the old prompt after a modify answer.
+- AskPermission approval remains separate. `/approve` and `/deny` still use `tm-send --mode tmux` for the same `bridge_session_id`, not `--discord-approval`.
+- Do not make every local/manual `tm-send` approval-gated. The gate is for Discord-originated Hermes dispatch unless the user explicitly asks for another approval path.
 
 ## Examples
 
@@ -113,7 +113,7 @@ Raw reply wrapper:
 [치즈] 이 메시지를 019e... 에 전달해.
 ```
 
-Refined `tmux-send` prompt:
+Refined `tm-send` prompt:
 
 ```text
 프롬프트 정제가 세션마다 다르게 적용되는 경로를 확인해. 어떤 경로가 정제 규칙을 우회하는지 근거와 수정 필요 여부를 요약해.
@@ -122,9 +122,9 @@ Refined `tmux-send` prompt:
 Command shape:
 
 ```bash
-tmux-send --session <bridgeSessionId> "<refined prompt>"
-tmux-send --session <bridgeSessionId> --discord-approval "<refined prompt>"
-tmux-send --session SESSION_ID --answer-approval send|reject --question-id QUESTION_ID
-tmux-send --session SESSION_ID --answer-approval modify --question-id QUESTION_ID --edit "<edit text>"
-tmux-send --session SESSION_ID [--mode auto|tmux|codex] [--dry|--dry-run] [--hold|--no-submit] "<refined prompt>"
+tm-send --session <bridgeSessionId> "<refined prompt>"
+tm-send --session <bridgeSessionId> --discord-approval "<refined prompt>"
+tm-send --session SESSION_ID --answer-approval send|reject --question-id QUESTION_ID
+tm-send --session SESSION_ID --answer-approval modify --question-id QUESTION_ID --edit "<edit text>"
+tm-send --session SESSION_ID [--mode auto|tmux|codex] [--dry|--dry-run] [--hold|--no-submit] "<refined prompt>"
 ```

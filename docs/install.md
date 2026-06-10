@@ -11,9 +11,9 @@ For a bridge + Hermes/Discord install without AgentMemory or CodeGraph, use [`do
 Dependency criteria:
 
 - Node.js **20+** / npm: required for the bridge server, package install, and tests.
-- `tmux`: required for visible managed GJC sessions and `tmux-new` / `tmux-kill`.
+- `tmux`: required for visible managed GJC sessions and `tm-new` / `tm-kill`.
 - `curl`: required for health checks, install validation, and bridge HTTP calls.
-- `jq`: required by helper CLIs that read bridge JSON or build JSON payloads. Treat it as required when installing `tmux-send` and `tmux-kill` onto `PATH`.
+- `jq`: required by helper CLIs that read bridge JSON or build JSON payloads. Treat it as required when installing `tm-send` and `tm-kill` onto `PATH`.
 - Hermes Gateway: required only when webhook/Discord push delivery is enabled. Agent bridge-only mode can be installed without Gateway.
 
 ```bash
@@ -66,9 +66,9 @@ BRIDGE_HERMES_RESTART_CMD=systemctl --user restart --no-block hermes-gateway.ser
 Created/used files:
 
 ```text
-~/.local/bin/tmux-new
-~/.local/bin/tmux-send
-~/.local/bin/tmux-kill
+~/.local/bin/tm-new
+~/.local/bin/tm-send
+~/.local/bin/tm-kill
 ~/.config/hermes-omx-notify/hermes-omx-notify.env
 ~/.hermes/skills/autonomous-ai-agents/hermes-omx-notify/SKILL.md
 ~/.config/systemd/user/hermes-omx-notify.service
@@ -89,7 +89,7 @@ If you only need the CLIs, install them from the repository `bin/` directory.
 bin/install.sh --force
 # or
 scripts/install-omx-cli.sh --force
-command -v tmux-new tmux-send tmux-kill
+command -v tm-new tm-send tm-kill
 ```
 
 This installer does not modify Codex global hooks.
@@ -122,7 +122,7 @@ systemctl --user status hermes-omx-notify.service
 systemctl --user cat hermes-omx-notify.service
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
-command -v tmux-new tmux-send tmux-kill
+command -v tm-new tm-send tm-kill
 curl -sS http://127.0.0.1:8644/health
 ```
 

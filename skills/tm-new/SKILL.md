@@ -1,35 +1,35 @@
 ---
-name: tmux-new
-description: Start/create/launch a new visible GJC tmux session for a repository/project through the local tmux-new helper. Trigger on 새 세션, 세션 열어, 시작해, create/launch/start/watch a new GJC session. Do not handle existing-session prompt delivery or session termination.
+name: tm-new
+description: Start/create/launch a new visible GJC tmux session for a repository/project through the local tm-new helper. Trigger on 새 세션, 세션 열어, 시작해, create/launch/start/watch a new GJC session. Do not handle existing-session prompt delivery or session termination.
 version: 0.1.0
 prerequisites:
-  commands: [tmux-new, tmux, gjc]
+  commands: [tm-new, tmux, gjc]
 metadata:
   hermes:
     tags: [omx, bridge, tmux, codex, session]
-    related_skills: [hermes-omx-notify, tmux-send, tmux-kill]
+    related_skills: [hermes-omx-notify, tm-send, tm-kill]
     requires_toolsets: [terminal]
     triggers:
-      - 새 세션, 세션 열어, 시작해, create/launch/start/watch a new GJC session -> tmux-new
-      - 전달, 보내, 넘겨, follow-up, 반영, 수정, 계속 -> use tmux-send instead
-      - 종료, kill, 킬, 죽여, stop/close session -> use tmux-kill instead
+      - 새 세션, 세션 열어, 시작해, create/launch/start/watch a new GJC session -> tm-new
+      - 전달, 보내, 넘겨, follow-up, 반영, 수정, 계속 -> use tm-send instead
+      - 종료, kill, 킬, 죽여, stop/close session -> use tm-kill instead
 ---
 
-# Tmux New
+# TM New
 
-Use this skill for new session creation. Use `tmux-new` to start a new visible GJC tmux session. This replaces legacy `cwt-new` and does not use clawhip.
-Hermes should use `tmux-new` rather than raw `gjc`; the helper applies managed tmux ownership tags and session registration defaults.
+Use this skill for new session creation. Use `tm-new` to start a new visible GJC tmux session. This replaces legacy `cwt-new` and does not use clawhip.
+Hermes should use `tm-new` rather than raw `gjc`; the helper applies managed tmux ownership tags and session registration defaults.
 
 ## Boundary
 
 - Owns: creating/launching a new visible GJC tmux session.
-- Does not own: sending prompts to an existing session (`tmux-send`), killing sessions (`tmux-kill`), or bridge read/status inspection (`hermes-omx-notify`).
+- Does not own: sending prompts to an existing session (`tm-send`), killing sessions (`tm-kill`), or bridge read/status inspection (`hermes-omx-notify`).
 - Bridge webhook `SessionStart` alert bodies are notifications, not requests to create another session.
-- `/new` or `/resume` inside an existing Codex pane prompt is a Codex slash command and should be delivered by `tmux-send`, not handled here.
+- `/new` or `/resume` inside an existing Codex pane prompt is a Codex slash command and should be delivered by `tm-send`, not handled here.
 
 ## Policy
 
-- Default launch: `tmux new-session ... 'gjc'` via the `tmux-new` script, followed by `@gjc-*` ownership-tag verification.
+- Default launch: `tmux new-session ... 'gjc'` via the `tm-new` script, followed by `@gjc-*` ownership-tag verification.
 - Do not add `--tmux` inside the native tmux session.
 - Do not add `--direct` unless the user explicitly wants to bypass managed tmux launch and run `gjc` in the current terminal.
 - Do not add `--disable codex_hooks` as a default; remove clawhip hooks instead of disabling all Codex hooks.
@@ -43,15 +43,15 @@ Before launching, identify the repository path explicitly. Prefer stable workspa
 # Resolve named project before launching; do not default to Hermes cwd for ambiguous requests.
 for d in "$HOME/work/<project>" "$HOME/docs/<project>" "$HOME/.hermes/<project>"; do [ -d "$d" ] && printf '%s\n' "$d"; done
 
-tmux-new [PROJECT_DIR] [--name SESSION] [--attach] [--direct] [--json] [--no-check] [-- GJC_ARGS...]
-tmux-new /path/to/repo --json
-tmux-new /path/to/repo --name gjc-project-main
+tm-new [PROJECT_DIR] [--name SESSION] [--attach] [--direct] [--json] [--no-check] [-- GJC_ARGS...]
+tm-new /path/to/repo --json
+tm-new /path/to/repo --name gjc-project-main
 ```
 
 After launch, use `hermes-omx-notify` or:
 
 ```bash
-tmux-send --project <project> "현재 상태를 요약해줘"
+tm-send --project <project> "현재 상태를 요약해줘"
 ```
 
 If the visible pane is blocked by a trust/setup prompt, clear it before sending work. Be conservative with update prompts: default to `n` unless the user explicitly tells you to update, because accepting an OMX update can enter setup prompts and mutate global/user Codex config before the requested session starts.
@@ -78,7 +78,7 @@ After any update/setup prompt, verify the session did not exit before reporting 
 ```bash
  tmux has-session -t <tmuxId>
  tmux capture-pane -t <tmuxId> -p -S -120 | tail -80
- tmux-send --list | head
+ tm-send --list | head
 ```
 
 Known post-update failure: `Error loading config.toml ... duplicate key` in `~/.codex/config.toml` means the session did not start; see `references/omx-update-config-duplicate-key.md` before retrying.

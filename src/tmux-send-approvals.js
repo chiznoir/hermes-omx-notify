@@ -4,8 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { bridgeStatePath } from './bridge-paths.js';
 import { ensureDirFor, readJsonl } from './jsonl.js';
 
-export const OMX_SEND_APPROVAL_GATE = 'discord-hermes-omx-send';
-export const OMX_SEND_APPROVAL_KIND = 'omx-send-approval';
+export const TMUX_SEND_APPROVAL_GATE = 'discord-hermes-tmux-send';
+export const TMUX_SEND_APPROVAL_KIND = 'tmux-send-approval';
 
 const SEND_VALUE = 'send';
 const REJECT_VALUE = 'reject';
@@ -26,22 +26,22 @@ function cloneObject(value) {
 }
 
 export function approvalDecisionsLogPath(projectRoot = process.cwd(), options = {}) {
-  return process.env.BRIDGE_OMX_SEND_APPROVALS_PATH
+  return process.env.BRIDGE_TMUX_SEND_APPROVALS_PATH
     || (process.env.BRIDGE_STATE_ROOT || options.bridgeStateRoot
-      ? bridgeStatePath('bridge-omx-send-approvals.jsonl', options)
-      : join(projectRoot, '.omx', 'state', 'bridge-omx-send-approvals.jsonl'));
+      ? bridgeStatePath('bridge-tmux-send-approvals.jsonl', options)
+      : join(projectRoot, '.omx', 'state', 'bridge-tmux-send-approvals.jsonl'));
 }
 
 export function approvalGateFromBody(body = {}) {
   const gate = cleanString(body.approvalGate || body.approval_gate);
   if (!gate) return { ok: true, enabled: false, gate: null };
-  if (gate !== OMX_SEND_APPROVAL_GATE) {
+  if (gate !== TMUX_SEND_APPROVAL_GATE) {
     return { ok: false, status: 400, error: `unsupported approvalGate: ${gate}` };
   }
   return { ok: true, enabled: true, gate };
 }
 
-export function buildOmxSendApprovalActions(questionId, answerEndpoint = null) {
+export function buildTmuxSendApprovalActions(questionId, answerEndpoint = null) {
   const withEndpoint = (action) => ({
     ...action,
     ...(answerEndpoint ? {
@@ -54,25 +54,25 @@ export function buildOmxSendApprovalActions(questionId, answerEndpoint = null) {
       action: 'send',
       label: '전송',
       style: 'primary',
-      custom_id: `omx-send-approval:${questionId}:send`,
+      custom_id: `tmux-send-approval:${questionId}:send`,
       answer: { kind: 'option', value: SEND_VALUE, selected_values: [SEND_VALUE], selected_labels: ['전송'] },
     }),
     withEndpoint({
       action: 'reject',
       label: '거절',
       style: 'danger',
-      custom_id: `omx-send-approval:${questionId}:reject`,
+      custom_id: `tmux-send-approval:${questionId}:reject`,
       answer: { kind: 'option', value: REJECT_VALUE, selected_values: [REJECT_VALUE], selected_labels: ['거절'] },
     }),
     withEndpoint({
       action: 'modify',
       label: '추가수정',
       style: 'secondary',
-      custom_id: `omx-send-approval:${questionId}:modify`,
+      custom_id: `tmux-send-approval:${questionId}:modify`,
       answer: { kind: 'other', selected_values: [MODIFY_VALUE] },
       modal: {
         title: '프롬프트 추가수정',
-        custom_id: `omx-send-approval:${questionId}:modify-modal`,
+        custom_id: `tmux-send-approval:${questionId}:modify-modal`,
         field: { name: 'other_text', label: '수정 요청 또는 추가 지시' },
       },
     }),
@@ -82,7 +82,7 @@ export function buildOmxSendApprovalActions(questionId, answerEndpoint = null) {
 export function buildDiscordComponents(questionId) {
   return [{
     type: 1,
-    components: buildOmxSendApprovalActions(questionId).map((action) => ({
+    components: buildTmuxSendApprovalActions(questionId).map((action) => ({
       type: 2,
       style: action.action === 'send' ? 1 : (action.action === 'reject' ? 4 : 2),
       label: action.label,
@@ -91,23 +91,23 @@ export function buildDiscordComponents(questionId) {
   }];
 }
 
-export function buildApprovalQuestionBody({ session, commandText, commandMetadata, commandBody, gate = OMX_SEND_APPROVAL_GATE }) {
-  const questionId = `omx-send-approval-${randomUUID()}`;
+export function buildApprovalQuestionBody({ session, commandText, commandMetadata, commandBody, gate = TMUX_SEND_APPROVAL_GATE }) {
+  const questionId = `tmux-send-approval-${randomUUID()}`;
   return {
     questionId,
-    kind: OMX_SEND_APPROVAL_KIND,
+    kind: TMUX_SEND_APPROVAL_KIND,
     question: `정제된 프롬프트를 Hermes에서 전송할까요?\n\n${commandText}`,
     type: 'single-answerable',
     allow_other: true,
     other_label: '추가수정',
-    source: 'bridge-omx-send-approval',
+    source: 'bridge-tmux-send-approval',
     options: [
       { label: '전송', value: SEND_VALUE, description: '정제된 프롬프트를 현재 세션으로 전송합니다.' },
       { label: '거절', value: REJECT_VALUE, description: '전송하지 않고 요청을 닫습니다.' },
     ],
     metadata: compactObject({
       gate,
-      kind: OMX_SEND_APPROVAL_KIND,
+      kind: TMUX_SEND_APPROVAL_KIND,
       commandText,
       commandMetadata: cloneObject(commandMetadata),
       commandBody: cloneObject(commandBody),
@@ -119,7 +119,7 @@ export function buildApprovalQuestionBody({ session, commandText, commandMetadat
 }
 
 export function approvalResponseFromQuestion(record, promptNormalization = {}) {
-  const actions = buildOmxSendApprovalActions(record.questionId, record.answerEndpoint);
+  const actions = buildTmuxSendApprovalActions(record.questionId, record.answerEndpoint);
   return {
     question: record,
     answer_endpoint: record.answerEndpoint,
@@ -129,7 +129,7 @@ export function approvalResponseFromQuestion(record, promptNormalization = {}) {
     delivery: {
       ok: true,
       status: 'approval-pending',
-      backend: 'bridge-omx-send-approval',
+      backend: 'bridge-tmux-send-approval',
     },
     promptNormalization,
   };

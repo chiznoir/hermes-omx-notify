@@ -12,7 +12,7 @@ import { routeSessionEvents } from './control-plane/event-router.js';
 import { readProjectChannelMap, resolveProjectChannel, updateProjectChannel } from './project-channels.js';
 import { normalizeCommandTextForDispatch } from './command-normalizer.js';
 import {
-  OMX_SEND_APPROVAL_KIND,
+  TMUX_SEND_APPROVAL_KIND,
   appendApprovalDecision,
   approvalGateFromBody,
   approvalMarkerBase,
@@ -21,7 +21,7 @@ import {
   classifyApprovalAnswer,
   latestApprovalDecision,
   readApprovalDecisions,
-} from './omx-send-approvals.js';
+} from './tmux-send-approvals.js';
 import {
   cancelGjcWorkflow,
   completeGjcWorkflow,
@@ -463,7 +463,7 @@ function approvalCommandMetadata(question = {}, questionAnswer = {}) {
   return {
     ...commandMetadata,
     approval: compactObject({
-      kind: OMX_SEND_APPROVAL_KIND,
+      kind: TMUX_SEND_APPROVAL_KIND,
       gate: metadata.gate,
       questionId: question.questionId,
       questionAnswerId: questionAnswer.questionAnswerId,
@@ -477,21 +477,21 @@ function approvalCommandBody(question = {}) {
   return metadata.commandBody && typeof metadata.commandBody === 'object' ? metadata.commandBody : {};
 }
 
-async function resolveOmxSendApprovalAnswer({ session, body, question, result, projectRoot, lockManager, options }) {
-  if (question?.kind !== OMX_SEND_APPROVAL_KIND || !result.ok || result.duplicate) return null;
+async function resolveTmuxSendApprovalAnswer({ session, body, question, result, projectRoot, lockManager, options }) {
+  if (question?.kind !== TMUX_SEND_APPROVAL_KIND || !result.ok || result.duplicate) return null;
   const decision = classifyApprovalAnswer(result.record.answer);
   const base = approvalMarkerBase({ session, question, questionAnswer: result.record, body });
 
   if (!['send', 'reject', 'modify'].includes(decision.action)) {
     return {
       status: 400,
-      delivery: { ok: false, status: 'invalid-approval-answer', backend: 'bridge-omx-send-approval', error: decision.error },
+      delivery: { ok: false, status: 'invalid-approval-answer', backend: 'bridge-tmux-send-approval', error: decision.error },
       approval: null,
       error: decision.error,
     };
   }
 
-  const lockKey = `omx-send-approval:${session.bridgeSessionId || session.codexThreadId || 'unknown'}:${question.questionId}`;
+  const lockKey = `tmux-send-approval:${session.bridgeSessionId || session.codexThreadId || 'unknown'}:${question.questionId}`;
   const lock = lockManager.acquire(lockKey, {
     questionId: question.questionId,
     questionAnswerId: result.record.questionAnswerId,
@@ -499,7 +499,7 @@ async function resolveOmxSendApprovalAnswer({ session, body, question, result, p
   if (!lock.ok) {
     return {
       status: 409,
-      delivery: { ok: false, status: 'lock-conflict', backend: 'bridge-omx-send-approval', error: 'approval already in progress' },
+      delivery: { ok: false, status: 'lock-conflict', backend: 'bridge-tmux-send-approval', error: 'approval already in progress' },
       approval: null,
     };
   }
@@ -512,7 +512,7 @@ async function resolveOmxSendApprovalAnswer({ session, body, question, result, p
         delivery: {
           ok: existing.state !== 'dispatch_failed',
           status: 'already-finalized',
-          backend: 'bridge-omx-send-approval',
+          backend: 'bridge-tmux-send-approval',
           state: existing.state,
           interactionId: existing.interactionId || null,
         },
@@ -525,7 +525,7 @@ async function resolveOmxSendApprovalAnswer({ session, body, question, result, p
         ...base,
         state: decision.state,
         modificationText: decision.text,
-        delivery: { ok: true, status: decision.state, backend: 'bridge-omx-send-approval' },
+        delivery: { ok: true, status: decision.state, backend: 'bridge-tmux-send-approval' },
       }, { projectRoot });
       return {
         status: 202,
@@ -537,7 +537,7 @@ async function resolveOmxSendApprovalAnswer({ session, body, question, result, p
     const claimed = await appendApprovalDecision({
       ...base,
       state: 'send_claimed',
-      delivery: { ok: true, status: 'send_claimed', backend: 'bridge-omx-send-approval' },
+      delivery: { ok: true, status: 'send_claimed', backend: 'bridge-tmux-send-approval' },
     }, { projectRoot });
 
     const commandText = question.metadata?.commandText;
@@ -545,7 +545,7 @@ async function resolveOmxSendApprovalAnswer({ session, body, question, result, p
       const marker = await appendApprovalDecision({
         ...base,
         state: 'dispatch_failed',
-        delivery: { ok: false, status: 'dispatch_failed', backend: 'bridge-omx-send-approval', error: 'approval commandText is missing' },
+        delivery: { ok: false, status: 'dispatch_failed', backend: 'bridge-tmux-send-approval', error: 'approval commandText is missing' },
       }, { projectRoot });
       return { status: 500, delivery: marker.delivery, approval: marker };
     }
@@ -567,19 +567,23 @@ async function resolveOmxSendApprovalAnswer({ session, body, question, result, p
       lockManager,
       commandMetadata,
     });
+    const approvalDelivery = {
+      ok: dispatched.delivery?.ok === true,
+      status: dispatched.delivery?.ok ? 'dispatch-succeeded' : 'dispatch-failed',
+      backend: 'bridge-tmux-send-approval',
+      dispatchDelivery: dispatched.delivery,
+    };
     const marker = await appendApprovalDecision({
       ...base,
       state: dispatched.delivery?.ok ? 'dispatch_succeeded' : 'dispatch_failed',
       interactionId: interaction.interactionId,
       claimedMarkerId: claimed.markerId,
-      delivery: dispatched.delivery,
+      delivery: approvalDelivery,
+      dispatchDelivery: dispatched.delivery,
     }, { projectRoot });
     return {
       status: dispatched.status,
-      delivery: {
-        ...dispatched.delivery,
-        status: dispatched.delivery?.ok ? 'dispatch-succeeded' : 'dispatch-failed',
-      },
+      delivery: marker.delivery,
       approval: marker,
       interaction,
     };
@@ -610,13 +614,13 @@ async function dispatchQuestionAnswer({ session, body, projectRoot, lockManager,
     return {
       status: result.status || 200,
       result,
-      delivery: question?.kind === OMX_SEND_APPROVAL_KIND
-        ? { ok: true, status: 'duplicate', backend: 'bridge-omx-send-approval' }
+      delivery: question?.kind === TMUX_SEND_APPROVAL_KIND
+        ? { ok: true, status: 'duplicate', backend: 'bridge-tmux-send-approval' }
         : undefined,
     };
   }
   await appendAudit('question_answer.accepted', { ...auditBase, questionAnswerId: result.record.questionAnswerId }, { projectRoot });
-  const approval = await resolveOmxSendApprovalAnswer({ session, body, question, result, projectRoot, lockManager, options });
+  const approval = await resolveTmuxSendApprovalAnswer({ session, body, question, result, projectRoot, lockManager, options });
   if (approval) {
     if (approval.error) {
       await appendAudit('question_answer.failed', { ...auditBase, questionAnswerId: result.record.questionAnswerId, error: approval.error }, { projectRoot });

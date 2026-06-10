@@ -2,7 +2,7 @@
 set -euo pipefail
 
 script_name="$(basename "$0")"
-canonical_name="tmux-new"
+canonical_name="tm-new"
 project_dir="$PWD"
 session_name=""
 attach=0
@@ -19,24 +19,22 @@ cleanup_succeeded=0
 usage() {
   cat <<'USAGE'
 Usage:
-  tmux-new [PROJECT_DIR] [--name SESSION] [--attach] [--direct] [--json] [--no-check] [-- GJC_ARGS...]
-  omx-new  [same options]  # legacy compatibility shim; non-canonical on gajae-version
+  tm-new [PROJECT_DIR] [--name SESSION] [--attach] [--direct] [--json] [--no-check] [-- GJC_ARGS...]
 
 Description:
-  Canonical helper on gajae-version is tmux-new.
+  Canonical helper on gajae-version is tm-new.
   This script starts a new managed GJC tmux session and verifies GJC ownership tags before success:
     @gjc-profile=1
     @gjc-branch
     @gjc-branch-slug
     @gjc-project
-  If invoked as omx-new, treat that filename as a non-canonical compatibility shim only.
   --direct runs gjc in the current terminal instead of creating a tmux session.
   --runs/--runs-dir is not supported on the branch-fixed gjc backend.
 
 Examples:
-  tmux-new ~/work/hermes-tmux-bridge
-  tmux-new . --name hermes-main --attach
-  tmux-new ~/work/app -- --model sonnet
+  tm-new ~/work/hermes-tmux-bridge
+  tm-new . --name hermes-main --attach
+  tm-new ~/work/app -- --model sonnet
 USAGE
 }
 

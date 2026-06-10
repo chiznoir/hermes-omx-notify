@@ -2,11 +2,32 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
-import { access, mkdir, mkdtemp, readFile, readlink, writeFile } from 'node:fs/promises';
+import { chmod, lstat, mkdir, mkdtemp, readFile, readlink, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const execFile = promisify(execFileCallback);
+
+async function seedLegacyHelperSymlinks(targetDir) {
+  await mkdir(targetDir, { recursive: true });
+  for (const name of ['omx-new', 'omx-send', 'omx-kill', 'tmux-new', 'tmux-send', 'tmux-kill']) {
+    await symlink(join(process.cwd(), 'bin', name), join(targetDir, name));
+  }
+}
+
+async function seedLegacyHelperCopies(targetDir) {
+  await mkdir(targetDir, { recursive: true });
+  for (const name of ['omx-new', 'omx-send', 'omx-kill', 'tmux-new', 'tmux-send', 'tmux-kill']) {
+    const { stdout } = await execFile('git', ['show', `HEAD:bin/${name}`], { cwd: process.cwd(), maxBuffer: 1024 * 1024 });
+    const target = join(targetDir, name);
+    await writeFile(target, stdout);
+    await chmod(target, 0o755);
+  }
+}
+
+async function assertPathAbsent(path) {
+  await assert.rejects(lstat(path));
+}
 
 async function tempEnv() {
   const home = await mkdtemp(join(tmpdir(), 'hermes-omx-notify-install-'));
@@ -132,30 +153,35 @@ test('install-systemd-service enables Hermes allowlist without default restart e
 });
 
 
-test('bin/install.sh installs only canonical tmux helper symlinks', async () => {
+test('bin/install.sh installs only canonical tm helper symlinks', async () => {
   const env = await tempEnv();
   const targetDir = join(env.HOME, 'bin');
+  await seedLegacyHelperSymlinks(targetDir);
   const { stdout } = await execFile('bash', [
     'bin/install.sh',
     '--dir', targetDir,
     '--force',
   ], { env, maxBuffer: 1024 * 1024 });
 
-  assert.match(stdout, /Installed symlink: .*tmux-new/);
-  assert.match(stdout, /Installed symlink: .*tmux-send/);
-  assert.match(stdout, /Installed symlink: .*tmux-kill/);
+  assert.match(stdout, /Installed symlink: .*tm-new/);
+  assert.match(stdout, /Installed symlink: .*tm-send/);
+  assert.match(stdout, /Installed symlink: .*tm-kill/);
   assert.doesNotMatch(stdout, /omx-bootstrap|omx-status|omx-sync|omx-cleanup/);
-  assert.equal(await readlink(join(targetDir, 'tmux-new')), join(process.cwd(), 'bin', 'tmux-new'));
-  assert.equal(await readlink(join(targetDir, 'tmux-send')), join(process.cwd(), 'bin', 'tmux-send'));
-  assert.equal(await readlink(join(targetDir, 'tmux-kill')), join(process.cwd(), 'bin', 'tmux-kill'));
-  await assert.rejects(access(join(targetDir, 'omx-new')));
-  await assert.rejects(access(join(targetDir, 'omx-send')));
-  await assert.rejects(access(join(targetDir, 'omx-kill')));
+  assert.equal(await readlink(join(targetDir, 'tm-new')), join(process.cwd(), 'bin', 'tm-new'));
+  assert.equal(await readlink(join(targetDir, 'tm-send')), join(process.cwd(), 'bin', 'tm-send'));
+  assert.equal(await readlink(join(targetDir, 'tm-kill')), join(process.cwd(), 'bin', 'tm-kill'));
+  await assertPathAbsent(join(targetDir, 'omx-new'));
+  await assertPathAbsent(join(targetDir, 'omx-send'));
+  await assertPathAbsent(join(targetDir, 'omx-kill'));
+  await assertPathAbsent(join(targetDir, 'tmux-new'));
+  await assertPathAbsent(join(targetDir, 'tmux-send'));
+  await assertPathAbsent(join(targetDir, 'tmux-kill'));
 });
 
-test('install-omx-cli installs canonical tmux helper symlinks and leaves omx aliases uninstalled', async () => {
+test('install-omx-cli installs canonical tm helper symlinks and leaves old aliases uninstalled', async () => {
   const env = await tempEnv();
   const targetDir = join(env.HOME, 'bin');
+  await seedLegacyHelperSymlinks(targetDir);
   const { stdout } = await execFile('bash', [
     'scripts/install-omx-cli.sh',
     '--repo-root', process.cwd(),
@@ -163,15 +189,48 @@ test('install-omx-cli installs canonical tmux helper symlinks and leaves omx ali
     '--force',
   ], { env, maxBuffer: 1024 * 1024 });
 
-  assert.match(stdout, /Installed symlink: .*tmux-new/);
-  assert.match(stdout, /Installed symlink: .*tmux-send/);
-  assert.match(stdout, /Installed symlink: .*tmux-kill/);
-  assert.equal(await readlink(join(targetDir, 'tmux-new')), join(process.cwd(), 'bin', 'tmux-new'));
-  assert.equal(await readlink(join(targetDir, 'tmux-send')), join(process.cwd(), 'bin', 'tmux-send'));
-  assert.equal(await readlink(join(targetDir, 'tmux-kill')), join(process.cwd(), 'bin', 'tmux-kill'));
-  await assert.rejects(access(join(targetDir, 'omx-new')));
-  await assert.rejects(access(join(targetDir, 'omx-send')));
-  await assert.rejects(access(join(targetDir, 'omx-kill')));
+  assert.match(stdout, /Installed symlink: .*tm-new/);
+  assert.match(stdout, /Installed symlink: .*tm-send/);
+  assert.match(stdout, /Installed symlink: .*tm-kill/);
+  assert.equal(await readlink(join(targetDir, 'tm-new')), join(process.cwd(), 'bin', 'tm-new'));
+  assert.equal(await readlink(join(targetDir, 'tm-send')), join(process.cwd(), 'bin', 'tm-send'));
+  assert.equal(await readlink(join(targetDir, 'tm-kill')), join(process.cwd(), 'bin', 'tm-kill'));
+  await assertPathAbsent(join(targetDir, 'omx-new'));
+  await assertPathAbsent(join(targetDir, 'omx-send'));
+  await assertPathAbsent(join(targetDir, 'omx-kill'));
+  await assertPathAbsent(join(targetDir, 'tmux-new'));
+  await assertPathAbsent(join(targetDir, 'tmux-send'));
+  await assertPathAbsent(join(targetDir, 'tmux-kill'));
+});
+
+test('install-omx-cli removes known legacy copied helpers but preserves non-managed legacy files', async () => {
+  const env = await tempEnv();
+  const targetDir = join(env.HOME, 'bin');
+  await seedLegacyHelperCopies(targetDir);
+  await writeFile(join(targetDir, 'custom-note'), 'not touched\n');
+  const { stdout } = await execFile('bash', [
+    'scripts/install-omx-cli.sh',
+    '--repo-root', process.cwd(),
+    '--dir', targetDir,
+    '--force',
+  ], { env, maxBuffer: 1024 * 1024 });
+
+  assert.match(stdout, /Removed legacy copied helper: .*omx-new/);
+  assert.match(stdout, /Removed legacy copied helper: .*tmux-send/);
+  for (const name of ['omx-new', 'omx-send', 'omx-kill', 'tmux-new', 'tmux-send', 'tmux-kill']) {
+    await assertPathAbsent(join(targetDir, name));
+  }
+  assert.equal(await readFile(join(targetDir, 'custom-note'), 'utf8'), 'not touched\n');
+
+  await writeFile(join(targetDir, 'tmux-send'), '#!/bin/sh\necho user-owned\n');
+  const preserved = await execFile('bash', [
+    'scripts/install-omx-cli.sh',
+    '--repo-root', process.cwd(),
+    '--dir', targetDir,
+    '--force',
+  ], { env, maxBuffer: 1024 * 1024 });
+  assert.match(preserved.stdout, /Skipping non-managed legacy target: .*tmux-send/);
+  assert.equal(await readFile(join(targetDir, 'tmux-send'), 'utf8'), '#!/bin/sh\necho user-owned\n');
 });
 
 test('apply-runtime dry-run shows the user service restart and health check plan', async () => {
@@ -298,9 +357,9 @@ test('core worktree does not expose extension helper scripts', async () => {
   assert.equal(pkg.scripts.start, 'node src/server.js');
 
   const binReadme = await readFile(join(process.cwd(), 'bin', 'README.md'), 'utf8');
-  assert.match(binReadme, /tmux-new/);
-  assert.match(binReadme, /tmux-send/);
-  assert.match(binReadme, /tmux-kill/);
+  assert.match(binReadme, /tm-new/);
+  assert.match(binReadme, /tm-send/);
+  assert.match(binReadme, /tm-kill/);
   for (const removed of ['bootstrap', 'status', 'sync', 'cleanup'].map((name) => `omx-${name}`)) {
     assert.equal(binReadme.includes(removed), false);
   }

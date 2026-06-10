@@ -9,12 +9,12 @@
 설치 후 아래만 동작하면 완료입니다.
 
 1. `hermes-omx-notify` server가 `127.0.0.1:3037`에서 systemd user service로 실행된다.
-2. Hermes에 `hermes-omx-notify`, `tmux-new`, `tmux-send`, `tmux-kill` skill이 설치된다.
+2. Hermes에 `hermes-omx-notify`, `tm-new`, `tm-send`, `tm-kill` skill이 설치된다.
 3. Hermes Gateway webhook subscription `omx-notify`가 `AskPermission,FinalAnswer` 이벤트를 받는다.
 4. Discord project channel 또는 session thread로 알림이 전달된다.
-5. `tmux-new`, `tmux-send`, `tmux-kill` helper CLI가 `PATH`에 있다.
+5. `tm-new`, `tm-send`, `tm-kill` helper CLI가 `PATH`에 있다.
 
-필요한 helper CLI는 `scripts/install-hermes-stack.sh`가 `tmux-new`, `tmux-send`, `tmux-kill`만 설치합니다. CLI만 설치할 때는 `bin/install.sh --force` 또는 `scripts/install-omx-cli.sh --force`를 사용합니다.
+필요한 helper CLI는 `scripts/install-hermes-stack.sh`가 `tm-new`, `tm-send`, `tm-kill`만 설치합니다. CLI만 설치할 때는 `bin/install.sh --force` 또는 `scripts/install-omx-cli.sh --force`를 사용합니다.
 
 ## 설치하지 않는 것
 
@@ -148,13 +148,13 @@ scripts/install-hermes-stack.sh --non-interactive --restart
 ## 설치 산출물
 
 ```text
-~/.local/bin/tmux-new
-~/.local/bin/tmux-send
-~/.local/bin/tmux-kill
+~/.local/bin/tm-new
+~/.local/bin/tm-send
+~/.local/bin/tm-kill
 ~/.hermes/skills/autonomous-ai-agents/hermes-omx-notify/SKILL.md
-~/.hermes/skills/autonomous-ai-agents/tmux-new/SKILL.md
-~/.hermes/skills/autonomous-ai-agents/tmux-send/SKILL.md
-~/.hermes/skills/autonomous-ai-agents/tmux-kill/SKILL.md
+~/.hermes/skills/autonomous-ai-agents/tm-new/SKILL.md
+~/.hermes/skills/autonomous-ai-agents/tm-send/SKILL.md
+~/.hermes/skills/autonomous-ai-agents/tm-kill/SKILL.md
 ~/.config/systemd/user/hermes-omx-notify.service
 ~/.config/hermes-omx-notify/hermes-omx-notify.env
 ~/.config/hermes-omx-notify/hermes-webhook.secret
@@ -172,7 +172,7 @@ curl -fsS http://127.0.0.1:3037/health | jq .
 systemctl --user is-active hermes-gateway.service
 curl -fsS http://127.0.0.1:8644/health | jq .
 
-command -v tmux-new tmux-send tmux-kill
+command -v tm-new tm-send tm-kill
 hermes skills list | grep 'hermes-omx-notify'
 ```
 
@@ -198,20 +198,20 @@ PY
 1. Hermes 또는 local shell에서 새 visible session을 만듭니다.
 
 ```bash
-tmux-new . --name omx-smoke --attach
+tm-new . --name omx-smoke --attach
 ```
 
 2. 다른 shell에서 dry-run command dispatch를 확인합니다.
 
 ```bash
-tmux-send --list
-tmux-send --session <bridge-session-id-or-tmux-id> --dry-run 'bridge binding smoke check'
+tm-send --list
+tm-send --session <bridge-session-id-or-tmux-id> --dry-run 'bridge binding smoke check'
 ```
 
 3. 실제 전달이 필요하면 dry-run 없이 보냅니다.
 
 ```bash
-tmux-send --session <bridge-session-id-or-tmux-id> '짧게 현재 cwd와 작업 가능 여부만 답해줘.'
+tm-send --session <bridge-session-id-or-tmux-id> '짧게 현재 cwd와 작업 가능 여부만 답해줘.'
 ```
 
 기대값:

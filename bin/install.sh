@@ -12,9 +12,9 @@ Usage:
 
 Description:
   Install only the core hermes-tmux-bridge helper CLIs onto PATH:
-    tmux-new
-    tmux-send
-    tmux-kill
+    tm-new
+    tm-send
+    tm-kill
 
 This core installer is a thin wrapper around scripts/install-omx-cli.sh.
 It does not install AgentMemory, CodeGraph, Codex hooks, omx-bootstrap, omx-status,
@@ -34,7 +34,7 @@ for arg in "$@"; do
   case "$arg" in
     --hooks|--no-global)
       printf 'error: %s belonged to the old extension installer and is not supported by bridge core\n' "$arg" >&2
-      printf 'hint: use scripts/install-omx-cli.sh or bin/install.sh for tmux-new/tmux-send/tmux-kill only\n' >&2
+      printf 'hint: use scripts/install-omx-cli.sh or bin/install.sh for tm-new/tm-send/tm-kill only\n' >&2
       exit 2
       ;;
     -h|--help)

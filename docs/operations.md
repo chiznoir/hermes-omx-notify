@@ -63,7 +63,7 @@ BRIDGE_HERMES_ALLOWLIST=true
 
 ## 4. Helper CLI 경계
 
-`tmux-new`, `tmux-send`, `tmux-kill`은 repository의 `bin/`에 있습니다. 설치/갱신은 아래 명령을 사용합니다.
+`tm-new`, `tm-send`, `tm-kill`은 repository의 `bin/`에 있습니다. 설치/갱신은 아래 명령을 사용합니다.
 
 ```bash
 scripts/install-omx-cli.sh --force
@@ -74,13 +74,13 @@ scripts/install-hermes-stack.sh --skip-cli
 자주 쓰는 예시는 아래입니다. 자세한 사용법은 `bin/README.md`와 각 CLI의 `--help`를 확인하세요.
 
 ```text
-tmux-new [PROJECT_DIR] [--name SESSION] [--attach] [--direct] [--json] [--no-check] [-- GJC_ARGS...]
-tmux-send --session SESSION_ID [--dry|--dry-run] [--hold|--no-submit] '<prompt>'
-tmux-send --session <bridgeSessionId> --discord-approval '<prompt>'
-tmux-kill --session SESSION_ID
+tm-new [PROJECT_DIR] [--name SESSION] [--attach] [--direct] [--json] [--no-check] [-- GJC_ARGS...]
+tm-send --session SESSION_ID [--dry|--dry-run] [--hold|--no-submit] '<prompt>'
+tm-send --session <bridgeSessionId> --discord-approval '<prompt>'
+tm-kill --session SESSION_ID
 ```
 
-Hermes가 visible session을 만들 때는 raw `gjc` 직접 실행 대신 `tmux-new`를 사용합니다. `tmux-new`는 managed GJC tmux session을 만들고 `@gjc-*` ownership tag를 검증한 뒤 bridge가 GJC JSONL + tmux metadata를 함께 관측하게 합니다. 운영 규칙에서 raw tmux paste나 unmanaged target dispatch를 기본 경로처럼 추가하지 않습니다.
+Hermes가 visible session을 만들 때는 raw `gjc` 직접 실행 대신 `tm-new`를 사용합니다. `tm-new`는 managed GJC tmux session을 만들고 `@gjc-*` ownership tag를 검증한 뒤 bridge가 GJC JSONL + tmux metadata를 함께 관측하게 합니다. 운영 규칙에서 raw tmux paste나 unmanaged target dispatch를 기본 경로처럼 추가하지 않습니다.
 
 ## 5. Hermes 규칙 주입 위치
 
@@ -88,9 +88,9 @@ Hermes가 visible session을 만들 때는 raw `gjc` 직접 실행 대신 `tmux-
 
 - `scripts/install-hermes-stack.sh`: `subscription_prompt` 원본입니다. 설치 후 `~/.hermes/webhook_subscriptions.json`에 저장됩니다.
 - `skills/hermes-omx-notify/SKILL.md`: bridge read/status/notification rendering 규칙입니다.
-- `skills/tmux-new/SKILL.md`: 새 GJC tmux lifecycle session 생성 규칙입니다.
-- `skills/tmux-send/SKILL.md`: 기존 session 전달, 의미 보존, routing metadata 제거, Discord approval flow 규칙입니다.
-- `skills/tmux-kill/SKILL.md`: session 종료 규칙입니다.
+- `skills/tm-new/SKILL.md`: 새 GJC tmux lifecycle session 생성 규칙입니다.
+- `skills/tm-send/SKILL.md`: 기존 session 전달, 의미 보존, routing metadata 제거, Discord approval flow 규칙입니다.
+- `skills/tm-kill/SKILL.md`: session 종료 규칙입니다.
 - `src/hermes-webhook-sink.js`: `AskPermission`/`FinalAnswer` payload와 delivery 경계입니다.
 - `src/server.js`: `POST /sessions/:id/commands`, approval question, `CommandSubmitted` / `User Command` event 경계입니다.
 
@@ -104,7 +104,7 @@ Hermes가 visible session을 만들 때는 raw `gjc` 직접 실행 대신 `tmux-
 - `BRIDGE_HERMES_NOTIFICATION_MODE=summary`: Hermes가 구조화 payload를 요약합니다.
 - session thread가 켜져 있으면 fast-path와 webhook path 모두 같은 `sessionThreads` map을 사용합니다.
 - reply의 “이 세션/이거/방금 알림”은 알림 payload의 `bridge_session_id`를 뜻합니다. project 최신 세션으로 추정하지 않습니다.
-- `/new`와 `/resume`은 기존 OMX/Codex pane에 전달되는 Codex slash command입니다. 기존 pane에 전달하는 경우 `tmux-send`가 원문 의미를 보존해 그대로 보냅니다.
+- `/new`와 `/resume`은 기존 OMX/Codex pane에 전달되는 Codex slash command입니다. 기존 pane에 전달하는 경우 `tm-send`가 원문 의미를 보존해 그대로 보냅니다.
 
 ## 7. 채널 매핑
 
@@ -170,7 +170,7 @@ tmux display-message -pt <tmux-session>:0 '#{session_name}|#{pane_current_path}|
 ### Discord 버튼/선택 UX 실패
 
 - `AskPermission` payload에 `approval_actions`, `component_actions`, `discord_components`가 있는지 확인합니다.
-- `tmux-send --session <id> --answer-approval send|reject --question-id <questionId>`로 answer가 들어가는지 확인합니다.
+- `tm-send --session <id> --answer-approval send|reject --question-id <questionId>`로 answer가 들어가는지 확인합니다.
 - 만료/중복 interaction은 명시 실패 또는 idempotent duplicate로 처리해야 합니다. raw tmux 방향키 fallback으로 조용히 전환하지 않습니다.
 
 ## 9. 보안

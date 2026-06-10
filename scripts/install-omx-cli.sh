@@ -9,9 +9,9 @@ Usage:
   scripts/install-omx-cli.sh [options]
 
 Installs:
-  tmux-new   Start a managed GJC tmux session
-  tmux-send  Send follow-up commands through the bridge API or managed tmux targets
-  tmux-kill  Stop a managed GJC tmux session
+  tm-new   Start a managed GJC tmux session
+  tm-send  Send follow-up commands through the bridge API or managed tmux targets
+  tm-kill  Stop a managed GJC tmux session
 
 Options:
   --dir PATH          Target bin directory (default: $OMX_CLI_INSTALL_DIR or ~/.local/bin)
@@ -23,8 +23,8 @@ Options:
   -h, --help          Show help
 
 Notes:
-  - This installer manages only canonical tmux-new, tmux-send, and tmux-kill.
-  - Repository bin/omx-* files are legacy compatibility wrappers; tmux-* are canonical.
+  - This installer manages only canonical tm-new, tm-send, and tm-kill.
+  - Stale omx-* and tmux-* helper symlinks from older installs are removed when repository-managed.
   - It does not install or modify Codex global hooks.
   - Keep the target directory on PATH for Hermes/Gateway workers.
 USAGE
@@ -38,7 +38,8 @@ copy_mode=0
 force=0
 uninstall=0
 dry_run=0
-tools=(tmux-new tmux-send tmux-kill)
+tools=(tm-new tm-send tm-kill)
+legacy_tools=(omx-new omx-send omx-kill tmux-new tmux-send tmux-kill)
 
 log() { printf '%s\n' "$*"; }
 die() { echo "$script_name: $*" >&2; exit 1; }
@@ -56,11 +57,63 @@ path_contains_dir() {
 
 source_tool_for() {
   case "$1" in
-    tmux-new) printf 'tmux-new' ;;
-    tmux-send) printf 'tmux-send' ;;
-    tmux-kill) printf 'tmux-kill' ;;
+    tm-new) printf 'tm-new' ;;
+    tm-send) printf 'tm-send' ;;
+    tm-kill) printf 'tm-kill' ;;
     *) return 1 ;;
   esac
+}
+
+legacy_hash_for() {
+  case "$1" in
+    omx-new) printf '26cf5acba826c6831721a674c92d260cd1dc3b5a936d42978f80bc869e6b2b0f' ;;
+    omx-send) printf '0d988aa05f0a2214990b0af8ba270895c03b7c68b2720d75ce4af510c06dd0ee' ;;
+    omx-kill) printf '5618748fac135610dce2185f449d67a0260a895b120bb2e9fdd5dda570d1f2e9' ;;
+    tmux-new) printf '3a635c6a9d9433778d19ff7417b5dd3115de4854b6efc8eaf01eeaaacadb267e' ;;
+    tmux-send) printf '790bcddae17086ba74d07203bcc0c61add5647e8773bb21fb6b734d4532ed0eb' ;;
+    tmux-kill) printf 'c27a724af232a5f4a85eb5a1041d63fd010c244575143e3585c2c26708660df7' ;;
+    *) return 1 ;;
+  esac
+}
+
+remove_legacy_tool() {
+  local tool="$1" src dst current_target="" expected_hash="" actual_hash=""
+  src="$repo_root/bin/$tool"
+  dst="$target_dir/$tool"
+
+  if [[ "$dry_run" == "1" ]]; then
+    log "DRY-RUN: remove repository-managed legacy helper '$dst' if present"
+    return 0
+  fi
+
+  [[ -e "$dst" || -L "$dst" ]] || return 0
+
+  if [[ -L "$dst" ]]; then
+    current_target="$(readlink "$dst" || true)"
+    if [[ "$current_target" == "$src" ]]; then
+      rm -f "$dst"
+      log "Removed legacy symlink: $dst"
+      return 0
+    fi
+    log "Skipping non-managed legacy symlink: $dst -> $current_target"
+    return 0
+  fi
+
+  expected_hash="$(legacy_hash_for "$tool" || true)"
+  if [[ -n "$expected_hash" ]] && command -v sha256sum >/dev/null 2>&1; then
+    actual_hash="$(sha256sum "$dst" | awk '{print $1}')"
+    if [[ "$actual_hash" == "$expected_hash" ]]; then
+      rm -f "$dst"
+      log "Removed legacy copied helper: $dst"
+      return 0
+    fi
+  elif [[ -f "$src" ]] && cmp -s "$src" "$dst"; then
+    rm -f "$dst"
+    log "Removed legacy copied helper: $dst"
+    return 0
+  fi
+
+  log "Skipping non-managed legacy target: $dst"
 }
 
 install_tool() {
@@ -158,6 +211,10 @@ target_dir="$(trim_trailing_slash "$target_dir")"
 if [[ "$dry_run" != "1" ]]; then
   mkdir -p "$target_dir"
 fi
+
+for legacy_tool in "${legacy_tools[@]}"; do
+  remove_legacy_tool "$legacy_tool"
+done
 
 for tool in "${tools[@]}"; do
   if [[ "$uninstall" == "1" ]]; then

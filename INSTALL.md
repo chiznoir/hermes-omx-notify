@@ -6,7 +6,7 @@ This file is written as a direct runbook for Hermes or another automation agent.
 
 Install a same-host `hermes-omx-notify` stack that provides:
 
-1. `tmux-new`, `tmux-send`, and `tmux-kill` helper CLIs on `PATH`.
+1. `tm-new`, `tm-send`, and `tm-kill` helper CLIs on `PATH`.
 2. The `hermes-omx-notify` Hermes skill.
 3. The localhost bridge server as a systemd user service.
 4. Optional Hermes Gateway webhook subscription for Discord delivery.
@@ -22,9 +22,9 @@ Runtime env rule: write only enabled features, secrets/ids, and non-default over
 Dependency criteria:
 
 - Node.js **20+** and npm are required for the bridge server, tests, and package install.
-- `tmux` is required for visible managed GJC sessions and for `tmux-new` / `tmux-kill`.
+- `tmux` is required for visible managed GJC sessions and for `tm-new` / `tm-kill`.
 - `curl` is required for health checks, install validation, and helper CLI HTTP calls.
-- `jq` is required for the bundled helper CLIs that parse bridge JSON or build JSON payloads, especially `tmux-send` and `tmux-kill`. Treat it as required when installing `tmux-new`, `tmux-send`, and `tmux-kill` onto `PATH`.
+- `jq` is required for the bundled helper CLIs that parse bridge JSON or build JSON payloads, especially `tm-send` and `tm-kill`. Treat it as required when installing `tm-new`, `tm-send`, and `tm-kill` onto `PATH`.
 - Hermes Gateway is required only for webhook/Discord push delivery. Agent bridge-only installs can run without it.
 
 ```bash
@@ -134,9 +134,9 @@ scripts/install-omx-cli.sh --force --dir "$HOME/.local/bin"
 Confirm the target directory is on `PATH` for Hermes/Gateway workers:
 
 ```bash
-command -v tmux-new
-command -v tmux-send
-command -v tmux-kill
+command -v tm-new
+command -v tm-send
+command -v tm-kill
 ```
 
 ### 2. Install Hermes skill
@@ -192,9 +192,9 @@ Prefer `scripts/install-hermes-stack.sh --webhook` when possible because it also
 systemctl --user status hermes-omx-notify.service --no-pager
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
-command -v tmux-new
-command -v tmux-send
-command -v tmux-kill
+command -v tm-new
+command -v tm-send
+command -v tm-kill
 npm test
 ```
 

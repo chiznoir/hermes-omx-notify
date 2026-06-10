@@ -13,7 +13,7 @@ Options:
   --category NAME       Skill category folder (default: autonomous-ai-agents)
   --name NAME           Skill folder name (default: hermes-omx-notify)
   --source PATH         Source skill dir (default: repo skills/hermes-omx-notify)
-  --no-helper-skills    Do not install tmux-new/tmux-send/tmux-kill helper skills
+  --no-helper-skills    Do not install tm-new/tm-send/tm-kill helper skills
   --dry-run             Print actions without writing
   -h, --help            Show help
 USAGE
@@ -82,19 +82,49 @@ sync_existing_profile_skill() {
   done < <(find "$profile_root" -mindepth 4 -maxdepth 4 -type d -path "*/skills/$category/$skill_name" -print0 2>/dev/null)
 }
 
+remove_installed_skill() {
+  local skill_name="$1"
+  local target_dir="$hermes_home/skills/$category/$skill_name"
+  local profile_root="$hermes_home/profiles"
+
+  if [[ -d "$target_dir" ]]; then
+    if [[ "$dry_run" == "1" ]]; then
+      echo "DRY-RUN: rm -rf '$target_dir'"
+    else
+      rm -rf "$target_dir"
+    fi
+    removed_legacy_skills+=("$target_dir")
+  fi
+
+  [[ -d "$profile_root" ]] || return 0
+  local profile_target
+  while IFS= read -r -d '' profile_target; do
+    if [[ "$dry_run" == "1" ]]; then
+      echo "DRY-RUN: rm -rf '$profile_target'"
+    else
+      rm -rf "$profile_target"
+    fi
+    removed_legacy_skills+=("$profile_target")
+  done < <(find "$profile_root" -mindepth 4 -maxdepth 4 -type d -path "*/skills/$category/$skill_name" -print0 2>/dev/null)
+}
+
 synced_profile_skills=()
+removed_legacy_skills=()
 install_skill "$name" "$source_dir"
 
 installed_helper_skills=()
 if [[ "$install_helper_skills" == "1" && "$name" == "hermes-omx-notify" && "$source_dir" == "$repo_root/skills/hermes-omx-notify" ]]; then
+  for legacy_helper_skill in tmux-new tmux-send tmux-kill; do
+    remove_installed_skill "$legacy_helper_skill"
+  done
   while IFS="|" read -r helper_skill helper_source_dir; do
     install_skill "$helper_skill" "$repo_root/$helper_source_dir"
     sync_existing_profile_skill "$helper_skill" "$repo_root/$helper_source_dir"
     installed_helper_skills+=("$hermes_home/skills/$category/$helper_skill")
   done <<'EOF'
-tmux-new|skills/tmux-new
-tmux-send|skills/tmux-send
-tmux-kill|skills/tmux-kill
+tm-new|skills/tm-new
+tm-send|skills/tm-send
+tm-kill|skills/tm-kill
 EOF
 fi
 
@@ -102,6 +132,7 @@ cat <<EOF2
 Installed Hermes skill: $name
 Target: $hermes_home/skills/$category/$name
 Helper skills: $([[ "${#installed_helper_skills[@]}" -gt 0 ]] && printf '%s ' "${installed_helper_skills[@]}" || echo "not installed")
+Removed legacy helper skills: $([[ "${#removed_legacy_skills[@]}" -gt 0 ]] && printf '%s ' "${removed_legacy_skills[@]}" || echo "none")
 Synced existing profile helper skills: $([[ "${#synced_profile_skills[@]}" -gt 0 ]] && printf '%s ' "${synced_profile_skills[@]}" || echo "none")
 
 Restart or reload Hermes gateway if it is already running:
@@ -109,7 +140,7 @@ Restart or reload Hermes gateway if it is already running:
 
 Check installed skills:
   hermes skills list | grep '$name'
-  hermes skills list | grep 'tmux-new'
-  hermes skills list | grep 'tmux-send'
-  hermes skills list | grep 'tmux-kill'
+  hermes skills list | grep 'tm-new'
+  hermes skills list | grep 'tm-send'
+  hermes skills list | grep 'tm-kill'
 EOF2

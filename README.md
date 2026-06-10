@@ -26,7 +26,7 @@ Hermes / Discord
 - **Full output access** — reads the latest assistant/final-answer text instead of only short notification previews.
 - **Command dispatch** — sends follow-up instructions into the visible tmux pane through bridge audit paths.
 - **GJC lifecycle control** — launches `gjc --tmux` / `gjc --tmux --worktree <path>` for a target checkout, then stops only managed GJC tmux sessions after validation.
-- **Helper CLIs** — installs `tmux-new`, `tmux-send`, and `tmux-kill` for Hermes-friendly session lifecycle operations.
+- **Helper CLIs** — installs `tm-new`, `tm-send`, and `tm-kill` for Hermes-friendly session lifecycle operations.
 - **Discord delivery** — routes `AskPermission`, `FinalAnswer`, lifecycle, and command events through Hermes webhook or direct Discord fast-path delivery.
 - **Project channel routing** — resolves, creates, and records project-specific Discord channel mappings.
 
@@ -54,7 +54,7 @@ Validate the install:
 systemctl --user status hermes-tmux-bridge.service --no-pager
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
-command -v tmux-new tmux-send tmux-kill
+command -v tm-new tm-send tm-kill
 ```
 
 Expected health response:

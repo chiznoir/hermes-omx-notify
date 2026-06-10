@@ -4,7 +4,7 @@ import { chmod, mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createCommandNotificationFlusher, createServer, resolveRuntimeProjectRoot } from '../src/server.js';
-import { appendApprovalDecision } from '../src/omx-send-approvals.js';
+import { appendApprovalDecision } from '../src/tmux-send-approvals.js';
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'omx-bridge-'));
@@ -1098,7 +1098,7 @@ test('POST /sessions/:id/commands with Discord Hermes approval gate registers UI
         commandText: '치즈 질문: 정제된 프롬프트 전송',
         mode: 'tmux',
         submit: false,
-        approvalGate: 'discord-hermes-omx-send',
+        approvalGate: 'discord-hermes-tmux-send',
         source: 'discord-hermes',
         discordInteractionId: 'discord-command-1',
       }),
@@ -1106,8 +1106,8 @@ test('POST /sessions/:id/commands with Discord Hermes approval gate registers UI
 
     assert.equal(res.status, 202);
     assert.equal(res.json.delivery.status, 'approval-pending');
-    assert.equal(res.json.question.kind, 'omx-send-approval');
-    assert.equal(res.json.question.metadata.gate, 'discord-hermes-omx-send');
+    assert.equal(res.json.question.kind, 'tmux-send-approval');
+    assert.equal(res.json.question.metadata.gate, 'discord-hermes-tmux-send');
     assert.equal(res.json.question.metadata.commandText, '정제된 프롬프트 전송');
     assert.equal(res.json.question.metadata.commandMetadata.discordInteractionId, 'discord-command-1');
     assert.equal(res.json.answer_endpoint, `/sessions/${codexSessionId}/question-answers`);
@@ -1126,11 +1126,11 @@ test('POST /sessions/:id/commands with Discord Hermes approval gate registers UI
 
     const questions = await readJsonlFile(join(root, '.omx', 'state', 'bridge-question-requests.jsonl'));
     assert.equal(questions.length, 1);
-    assert.equal(questions[0].kind, 'omx-send-approval');
+    assert.equal(questions[0].kind, 'tmux-send-approval');
   });
 });
 
-test('POST /sessions/:id/question-answers approves gated omx-send exactly once', async () => {
+test('POST /sessions/:id/question-answers approves gated tmux-send approval exactly once', async () => {
   const { root, codexHome, codexSessionId, fakeTmuxBin, fakeTmuxCallsPath } = await fixture();
   const flushes = [];
   const serverOptions = {
@@ -1149,7 +1149,7 @@ test('POST /sessions/:id/question-answers approves gated omx-send exactly once',
         commandText: '승인 후 한 번만 전송',
         mode: 'tmux',
         submit: false,
-        approvalGate: 'discord-hermes-omx-send',
+        approvalGate: 'discord-hermes-tmux-send',
       }),
     });
     const questionId = gate.json.question.questionId;
@@ -1166,7 +1166,11 @@ test('POST /sessions/:id/question-answers approves gated omx-send exactly once',
     });
     assert.equal(approve.status, 202);
     assert.equal(approve.json.delivery.status, 'dispatch-succeeded');
+    assert.equal(approve.json.delivery.backend, 'bridge-tmux-send-approval');
+    assert.equal(approve.json.delivery.dispatchDelivery.backend, 'tmux');
     assert.equal(approve.json.approval.state, 'dispatch_succeeded');
+    assert.equal(approve.json.approval.delivery.backend, 'bridge-tmux-send-approval');
+    assert.equal(approve.json.approval.dispatchDelivery.backend, 'tmux');
     assert.ok(approve.json.interaction.interactionId);
     assert.equal(flushes.length, 1);
     assert.equal(flushes[0].reason, 'command-submitted');
@@ -1225,19 +1229,21 @@ test('POST /sessions/:id/question-answers approves gated omx-send exactly once',
     const calls = await readFile(fakeTmuxCallsPath, 'utf8');
     assert.equal((calls.match(/승인 후 한 번만 전송/g) || []).length, 1);
 
-    const decisions = await readJsonlFile(join(root, '.omx', 'state', 'bridge-omx-send-approvals.jsonl'));
+    const decisions = await readJsonlFile(join(root, '.omx', 'state', 'bridge-tmux-send-approvals.jsonl'));
     assert.deepEqual(decisions.map((item) => item.state), ['send_claimed', 'dispatch_succeeded']);
+    assert.deepEqual(decisions.map((item) => item.delivery.backend), ['bridge-tmux-send-approval', 'bridge-tmux-send-approval']);
+    assert.equal(decisions[1].dispatchDelivery.backend, 'tmux');
   });
 });
 
-test('POST /sessions/:id/question-answers rejects or modifies gated omx-send without dispatch', async () => {
+test('POST /sessions/:id/question-answers rejects or modifies gated tmux-send approval without dispatch', async () => {
   const { root, codexHome, codexSessionId, fakeTmuxBin, fakeTmuxCallsPath } = await fixture();
   const serverOptions = { projectRoot: root, codexHome };
   await withEnv({ TMUX_BIN: fakeTmuxBin }, async () => {
     const rejectGate = await request(createServer(serverOptions), `/sessions/${codexSessionId}/commands`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ commandText: '거절 대상', mode: 'tmux', approvalGate: 'discord-hermes-omx-send' }),
+      body: JSON.stringify({ commandText: '거절 대상', mode: 'tmux', approvalGate: 'discord-hermes-tmux-send' }),
     });
     const reject = await request(createServer(serverOptions), `/sessions/${codexSessionId}/question-answers`, {
       method: 'POST',
@@ -1265,7 +1271,7 @@ test('POST /sessions/:id/question-answers rejects or modifies gated omx-send wit
     const modifyGate = await request(createServer(serverOptions), `/sessions/${codexSessionId}/commands`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ commandText: '수정 대상', mode: 'tmux', approvalGate: 'discord-hermes-omx-send' }),
+      body: JSON.stringify({ commandText: '수정 대상', mode: 'tmux', approvalGate: 'discord-hermes-tmux-send' }),
     });
     const modify = await request(createServer(serverOptions), `/sessions/${codexSessionId}/question-answers`, {
       method: 'POST',
@@ -1294,7 +1300,7 @@ test('POST /sessions/:id/question-answers rejects or modifies gated omx-send wit
 
     assert.equal(await readFile(fakeTmuxCallsPath, 'utf8').catch(() => ''), '');
     assert.equal(await readFile(join(root, '.omx', 'logs', 'bridge-interactions.jsonl'), 'utf8').catch(() => ''), '');
-    const decisions = await readJsonlFile(join(root, '.omx', 'state', 'bridge-omx-send-approvals.jsonl'));
+    const decisions = await readJsonlFile(join(root, '.omx', 'state', 'bridge-tmux-send-approvals.jsonl'));
     assert.deepEqual(decisions.map((item) => item.state), ['rejected', 'modification_requested']);
   });
 });
@@ -1311,10 +1317,18 @@ test('approval gate rejects unsupported gates and orphan claimed approvals fail 
     assert.equal(unsupported.status, 400);
     assert.match(unsupported.json.error, /unsupported approvalGate/);
 
+    const legacyGate = await request(createServer(serverOptions), `/sessions/${codexSessionId}/commands`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ commandText: '옛 gate', approvalGate: 'discord-hermes-omx-send' }),
+    });
+    assert.equal(legacyGate.status, 400);
+    assert.match(legacyGate.json.error, /unsupported approvalGate: discord-hermes-omx-send/);
+
     const gate = await request(createServer(serverOptions), `/sessions/${codexSessionId}/commands`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ commandText: 'orphan claimed', mode: 'tmux', approvalGate: 'discord-hermes-omx-send' }),
+      body: JSON.stringify({ commandText: 'orphan claimed', mode: 'tmux', approvalGate: 'discord-hermes-tmux-send' }),
     });
     const questionId = gate.json.question.questionId;
     await appendApprovalDecision({
@@ -1324,7 +1338,7 @@ test('approval gate rejects unsupported gates and orphan claimed approvals fail 
       questionId,
       state: 'send_claimed',
       questionAnswerId: 'orphan-answer',
-      delivery: { ok: true, status: 'send_claimed', backend: 'bridge-omx-send-approval' },
+      delivery: { ok: true, status: 'send_claimed', backend: 'bridge-tmux-send-approval' },
     }, { projectRoot: root });
 
     const approve = await request(createServer(serverOptions), `/sessions/${codexSessionId}/question-answers`, {

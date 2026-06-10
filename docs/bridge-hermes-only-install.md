@@ -9,12 +9,12 @@ Use this runbook when a new PC or Hermes Agent should install only `hermes-omx-n
 The install is complete when only the following are working:
 
 1. The `hermes-omx-notify` server runs on `127.0.0.1:3037` as a systemd user service.
-2. Hermes has the `hermes-omx-notify`, `tmux-new`, `tmux-send`, and `tmux-kill` skills installed.
+2. Hermes has the `hermes-omx-notify`, `tm-new`, `tm-send`, and `tm-kill` skills installed.
 3. The Hermes Gateway webhook subscription `omx-notify` receives `AskPermission,FinalAnswer` events.
 4. Notifications reach a Discord project channel or session thread.
-5. The `tmux-new`, `tmux-send`, and `tmux-kill` helper CLIs are on `PATH`.
+5. The `tm-new`, `tm-send`, and `tm-kill` helper CLIs are on `PATH`.
 
-The required helper CLIs are installed by `scripts/install-hermes-stack.sh`, which installs only `tmux-new`, `tmux-send`, and `tmux-kill` for this path. To install only the CLIs, use `bin/install.sh --force` or `scripts/install-omx-cli.sh --force`.
+The required helper CLIs are installed by `scripts/install-hermes-stack.sh`, which installs only `tm-new`, `tm-send`, and `tm-kill` for this path. To install only the CLIs, use `bin/install.sh --force` or `scripts/install-omx-cli.sh --force`.
 
 ## What this runbook does not install
 
@@ -145,13 +145,13 @@ In this mode, `FinalAnswer` / `AskPermission` automatic notifications will not b
 ## Installed artifacts
 
 ```text
-~/.local/bin/tmux-new
-~/.local/bin/tmux-send
-~/.local/bin/tmux-kill
+~/.local/bin/tm-new
+~/.local/bin/tm-send
+~/.local/bin/tm-kill
 ~/.hermes/skills/autonomous-ai-agents/hermes-omx-notify/SKILL.md
-~/.hermes/skills/autonomous-ai-agents/tmux-new/SKILL.md
-~/.hermes/skills/autonomous-ai-agents/tmux-send/SKILL.md
-~/.hermes/skills/autonomous-ai-agents/tmux-kill/SKILL.md
+~/.hermes/skills/autonomous-ai-agents/tm-new/SKILL.md
+~/.hermes/skills/autonomous-ai-agents/tm-send/SKILL.md
+~/.hermes/skills/autonomous-ai-agents/tm-kill/SKILL.md
 ~/.config/systemd/user/hermes-omx-notify.service
 ~/.config/hermes-omx-notify/hermes-omx-notify.env
 ~/.config/hermes-omx-notify/hermes-webhook.secret
@@ -169,7 +169,7 @@ curl -fsS http://127.0.0.1:3037/health | jq .
 systemctl --user is-active hermes-gateway.service
 curl -fsS http://127.0.0.1:8644/health | jq .
 
-command -v tmux-new tmux-send tmux-kill
+command -v tm-new tm-send tm-kill
 hermes skills list | grep 'hermes-omx-notify'
 ```
 
@@ -194,20 +194,20 @@ PY
 1. Create a new visible session from Hermes or a local shell.
 
 ```bash
-tmux-new . --name omx-smoke --attach
+tm-new . --name omx-smoke --attach
 ```
 
 2. In another shell, check dry-run command dispatch.
 
 ```bash
-tmux-send --list
-tmux-send --session <bridge-session-id-or-tmux-id> --dry-run 'bridge binding smoke check'
+tm-send --list
+tm-send --session <bridge-session-id-or-tmux-id> --dry-run 'bridge binding smoke check'
 ```
 
 3. If real delivery is needed, send without dry-run.
 
 ```bash
-tmux-send --session <bridge-session-id-or-tmux-id> 'Briefly answer only the current cwd and whether you can work.'
+tm-send --session <bridge-session-id-or-tmux-id> 'Briefly answer only the current cwd and whether you can work.'
 ```
 
 Expected results:

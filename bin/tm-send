@@ -2,7 +2,7 @@
 set -euo pipefail
 
 script_name="$(basename "$0")"
-canonical_name="tmux-send"
+canonical_name="tm-send"
 bridge_url="${OMX_BRIDGE_URL:-http://127.0.0.1:3037}"
 token="${OMX_BRIDGE_TOKEN:-}"
 session_id=""
@@ -18,7 +18,7 @@ question_id=""
 edit_text=""
 list_only=0
 command_text=""
-session_list_limit="${OMX_SEND_SESSION_LIST_LIMIT:-50}"
+session_list_limit="${TM_SEND_SESSION_LIST_LIMIT:-50}"
 managed_session_name=""
 managed_pane_id=""
 managed_project=""
@@ -26,24 +26,22 @@ managed_project=""
 usage() {
   cat <<'USAGE'
 Usage:
-  tmux-send --session SESSION_ID [--mode auto|tmux|codex] [--dry] [--hold] [--raw] PROMPT
-  tmux-send --project PROJECT PROMPT
-  tmux-send --tmux TMUX_TARGET [--dry] [--hold] PROMPT
-  tmux-send --session SESSION_ID --discord-approval PROMPT
-  tmux-send --session SESSION_ID --answer-approval send|reject --question-id QUESTION_ID
-  tmux-send --session SESSION_ID --answer-approval modify --question-id QUESTION_ID --edit TEXT
-  tmux-send --list
-  omx-send  [same options]  # legacy compatibility shim; non-canonical on gajae-version
+  tm-send --session SESSION_ID [--mode auto|tmux|codex] [--dry] [--hold] [--raw] PROMPT
+  tm-send --project PROJECT PROMPT
+  tm-send --tmux TMUX_TARGET [--dry] [--hold] PROMPT
+  tm-send --session SESSION_ID --discord-approval PROMPT
+  tm-send --session SESSION_ID --answer-approval send|reject --question-id QUESTION_ID
+  tm-send --session SESSION_ID --answer-approval modify --question-id QUESTION_ID --edit TEXT
+  tm-send --list
 
 --list columns:
   bridgeSessionId, project, activityState, status, tmuxId, lastEventAt
 
 Description:
-  Canonical helper on gajae-version is tmux-send.
+  Canonical helper on gajae-version is tm-send.
   Bridge mode sends follow-up commands through the bridge API.
   Direct --tmux mode is managed-only: it rejects untagged tmux targets and requires
   @gjc-profile=1, @gjc-branch=gjc, @gjc-branch-slug, and @gjc-project before dispatch.
-  If invoked as omx-send, treat that filename as a non-canonical compatibility shim only.
 USAGE
 }
 
@@ -105,7 +103,7 @@ while [[ $# -gt 0 ]]; do
     --raw|--no-normalize|--preserve-raw) normalize=0; shift ;;
     --normalize) normalize=1; shift ;;
     --approval-gate) [[ $# -ge 2 ]] || die "missing value after --approval-gate"; approval_gate="$2"; shift 2 ;;
-    --discord-approval) approval_gate="discord-hermes-omx-send"; shift ;;
+    --discord-approval) approval_gate="discord-hermes-tmux-send"; shift ;;
     --answer-approval|--approval-answer) [[ $# -ge 2 ]] || die "missing send|reject|modify after $1"; approval_answer="$2"; shift 2 ;;
     --question-id) [[ $# -ge 2 ]] || die "missing id after --question-id"; question_id="$2"; shift 2 ;;
     --edit|--other-text) [[ $# -ge 2 ]] || die "missing text after $1"; edit_text="$2"; shift 2 ;;
@@ -119,8 +117,8 @@ done
 
 require_cmd jq
 [[ "$mode" =~ ^(auto|tmux|codex)$ ]] || die 'mode must be one of auto|tmux|codex'
-if [[ -n "$approval_gate" && "$approval_gate" != 'discord-hermes-omx-send' ]]; then
-  die 'approval gate must be discord-hermes-omx-send'
+if [[ -n "$approval_gate" && "$approval_gate" != 'discord-hermes-tmux-send' ]]; then
+  die 'approval gate must be discord-hermes-tmux-send'
 fi
 if [[ -n "$approval_answer" && ! "$approval_answer" =~ ^(send|reject|modify)$ ]]; then
   die '--answer-approval must be one of send|reject|modify'
