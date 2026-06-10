@@ -6,20 +6,20 @@ usage() {
 Usage:
   scripts/set-hermes-fallback-channel.sh CHANNEL_ID [options]
 
-Update the Hermes OMX Bridge fallback Discord channel in both:
+Update the Hermes tmux bridge fallback Discord channel in both:
   - project channel map default
   - bridge service env fallback keys
 
 Options:
   --map PATH           Channel map path
                        (default: $BRIDGE_HERMES_PROJECT_CHANNEL_MAP or
-                        ~/.config/hermes-omx-notify/project-channels.json)
+                        ~/.config/hermes-tmux-bridge/project-channels.json)
   --env-file PATH      Bridge service env file
-                       (default: ~/.config/hermes-omx-notify/hermes-omx-notify.env)
+                       (default: ~/.config/hermes-tmux-bridge/hermes-tmux-bridge.env)
   --restart            Restart the user systemd bridge service after updating
   --no-restart         Do not restart the service (default)
   --service NAME       systemd --user service name
-                       (default: hermes-omx-notify.service)
+                       (default: hermes-tmux-bridge.service)
   --dry-run            Print intended changes without writing files
   -h, --help           Show this help
 
@@ -34,9 +34,9 @@ die() {
 }
 
 channel_id=""
-channel_map="${BRIDGE_HERMES_PROJECT_CHANNEL_MAP:-$HOME/.config/hermes-omx-notify/project-channels.json}"
-env_file="$HOME/.config/hermes-omx-notify/hermes-omx-notify.env"
-service_name="hermes-omx-notify.service"
+channel_map="${BRIDGE_HERMES_PROJECT_CHANNEL_MAP:-$HOME/.config/hermes-tmux-bridge/project-channels.json}"
+env_file="$HOME/.config/hermes-tmux-bridge/hermes-tmux-bridge.env"
+service_name="hermes-tmux-bridge.service"
 restart=false
 dry_run=false
 

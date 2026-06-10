@@ -1,15 +1,15 @@
-# Operations — hermes-omx-notify
+# Operations — hermes-tmux-bridge
 
 이 문서는 설치 후 운영자가 자주 확인하는 항목만 남긴 runbook입니다. 설치 절차는 `INSTALL.md`, 상세 설계/edge case는 `docs/internals.md`를 봅니다.
 
 ## 1. 서비스 확인
 
-`hermes-omx-notify`는 기본적으로 **systemd user service**입니다. system-wide `systemctl`이 아니라 `--user`를 붙입니다.
+`hermes-tmux-bridge`는 기본적으로 **systemd user service**입니다. system-wide `systemctl`이 아니라 `--user`를 붙입니다.
 
 ```bash
-systemctl --user status hermes-omx-notify.service --no-pager
+systemctl --user status hermes-tmux-bridge.service --no-pager
 systemctl --user status hermes-gateway.service --no-pager
-journalctl --user -u hermes-omx-notify.service -f
+journalctl --user -u hermes-tmux-bridge.service -f
 journalctl --user -u hermes-gateway.service -f
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:8644/health
@@ -18,7 +18,7 @@ curl -sS http://127.0.0.1:8644/health
 실행 경로는 단순합니다.
 
 ```text
-hermes-omx-notify.service
+hermes-tmux-bridge.service
   -> npm start
   -> node src/server.js
   -> http://127.0.0.1:3037
@@ -28,11 +28,11 @@ hermes-omx-notify.service
 
 | 대상 | 위치/명령 |
 | --- | --- |
-| service env | `systemctl --user cat hermes-omx-notify.service` |
-| bridge state | `~/.local/state/hermes-omx-notify/` |
-| project channel map | `~/.config/hermes-omx-notify/project-channels.json` |
+| service env | `systemctl --user cat hermes-tmux-bridge.service` |
+| bridge state | `~/.local/state/hermes-tmux-bridge/` |
+| project channel map | `~/.config/hermes-tmux-bridge/project-channels.json` |
 | Hermes webhook subscription | `~/.hermes/webhook_subscriptions.json` |
-| Hermes OMX notify skill | `skills/hermes-omx-notify/SKILL.md` |
+| Hermes tmux bridge skill | `skills/hermes-tmux-bridge/SKILL.md` |
 | helper CLI source | repository's `bin/` |
 
 ## 3. 권장 env 표면
@@ -41,7 +41,7 @@ hermes-omx-notify.service
 
 ```env
 BRIDGE_HERMES_WEBHOOK_ENABLED=true
-BRIDGE_HERMES_WEBHOOK_URL=http://127.0.0.1:8644/webhooks/omx-notify
+BRIDGE_HERMES_WEBHOOK_URL=http://127.0.0.1:8644/webhooks/tmux-bridge
 BRIDGE_HERMES_WEBHOOK_SECRET=<shared secret>
 BRIDGE_HERMES_DEFAULT_CHANNEL_ID=<fallback channel id>
 
@@ -87,7 +87,7 @@ Hermes가 visible session을 만들 때는 raw `gjc` 직접 실행 대신 `tm-ne
 런타임 규칙은 아래 파일들이 나눠 가집니다.
 
 - `scripts/install-hermes-stack.sh`: `subscription_prompt` 원본입니다. 설치 후 `~/.hermes/webhook_subscriptions.json`에 저장됩니다.
-- `skills/hermes-omx-notify/SKILL.md`: bridge read/status/notification rendering 규칙입니다.
+- `skills/hermes-tmux-bridge/SKILL.md`: bridge read/status/notification rendering 규칙입니다.
 - `skills/tm-new/SKILL.md`: 새 GJC tmux lifecycle session 생성 규칙입니다.
 - `skills/tm-send/SKILL.md`: 기존 session 전달, 의미 보존, routing metadata 제거, Discord approval flow 규칙입니다.
 - `skills/tm-kill/SKILL.md`: session 종료 규칙입니다.
@@ -130,7 +130,7 @@ scripts/set-hermes-fallback-channel.sh <fallback-channel-id> --restart
 ### webhook route 404
 
 ```text
-Hermes webhook failed: 404 {"error":"Unknown route: omx-notify"}
+Hermes webhook failed: 404 {"error":"Unknown route: tmux-bridge"}
 ```
 
 ```bash
@@ -178,4 +178,4 @@ tmux display-message -pt <tmux-session>:0 '#{session_name}|#{pane_current_path}|
 - 기본 bind는 `HOST=127.0.0.1`을 유지합니다.
 - Docker/LAN/reverse proxy/public 노출이면 `OMX_BRIDGE_TOKEN`을 필수로 둡니다.
 - webhook secret, bot token, channel/user ID가 들어간 운영 env 파일은 commit하지 않습니다.
-- `.env`, `~/.config/hermes-omx-notify/*.env`, secret files는 로컬 운영 파일입니다.
+- `.env`, `~/.config/hermes-tmux-bridge/*.env`, secret files는 로컬 운영 파일입니다.

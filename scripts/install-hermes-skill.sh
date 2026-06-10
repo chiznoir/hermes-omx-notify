@@ -11,8 +11,8 @@ Usage:
 Options:
   --hermes-home PATH    Hermes home (default: $HERMES_HOME or ~/.hermes)
   --category NAME       Skill category folder (default: autonomous-ai-agents)
-  --name NAME           Skill folder name (default: hermes-omx-notify)
-  --source PATH         Source skill dir (default: repo skills/hermes-omx-notify)
+  --name NAME           Skill folder name (default: hermes-tmux-bridge)
+  --source PATH         Source skill dir (default: repo skills/hermes-tmux-bridge)
   --no-helper-skills    Do not install tm-new/tm-send/tm-kill helper skills
   --dry-run             Print actions without writing
   -h, --help            Show help
@@ -23,8 +23,8 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd "$script_dir/.." && pwd)"
 hermes_home="${HERMES_HOME:-$HOME/.hermes}"
 category="autonomous-ai-agents"
-name="hermes-omx-notify"
-source_dir="$repo_root/skills/hermes-omx-notify"
+name="hermes-tmux-bridge"
+source_dir="$repo_root/skills/hermes-tmux-bridge"
 dry_run=0
 install_helper_skills=1
 
@@ -113,7 +113,7 @@ removed_legacy_skills=()
 install_skill "$name" "$source_dir"
 
 installed_helper_skills=()
-if [[ "$install_helper_skills" == "1" && "$name" == "hermes-omx-notify" && "$source_dir" == "$repo_root/skills/hermes-omx-notify" ]]; then
+if [[ "$install_helper_skills" == "1" && "$name" == "hermes-tmux-bridge" && "$source_dir" == "$repo_root/skills/hermes-tmux-bridge" ]]; then
   for legacy_helper_skill in tmux-new tmux-send tmux-kill; do
     remove_installed_skill "$legacy_helper_skill"
   done

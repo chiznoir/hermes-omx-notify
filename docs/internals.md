@@ -1,10 +1,10 @@
-# Internals and risk notes — hermes-omx-notify
+# Internals and risk notes — hermes-tmux-bridge
 
 이 문서는 `docs/operations.md`에서 뺀 상세 동작과 refactor 후 확인할 edge case를 모읍니다. 평소 운영자는 operations guide만 보면 됩니다.
 
 ## Canonical runtime evidence
 
-`hermes-omx-notify`는 OMX lifecycle record와 로컬 Codex JSONL/log를 런타임 판단의 기준으로 사용합니다. tmux list, delivery cursor, event index, channel map은 다시 만들 수 있는 운영 상태입니다. 서로 다른 session을 억지로 하나로 합치지 않습니다.
+`hermes-tmux-bridge`는 OMX lifecycle record와 로컬 Codex JSONL/log를 런타임 판단의 기준으로 사용합니다. tmux list, delivery cursor, event index, channel map은 다시 만들 수 있는 운영 상태입니다. 서로 다른 session을 억지로 하나로 합치지 않습니다.
 
 ## Session reconciliation
 
@@ -54,7 +54,7 @@ OMX notify rename 이후 특히 아래를 봅니다.
 - `SessionStart` 알림 본문을 새 session trigger로 오해하지 않는지.
 - `/new`/`/resume`이 기존 pane에 들어가는 Codex slash command로 보존되는지.
 - session thread 생성 실패가 project channel silent fallback으로 숨지 않는지.
-- install script, systemd service, skill path, webhook subscription이 모두 `hermes-omx-notify` 이름을 쓰는지.
+- install script, systemd service, skill path, webhook subscription이 모두 `hermes-tmux-bridge` 이름을 쓰는지.
 - public docs/source에 local absolute path, private Discord webhook URL, 개인 Discord ID, 운영 token이 들어가지 않았는지.
 
 ## Validation commands

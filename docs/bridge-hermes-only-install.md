@@ -2,15 +2,15 @@
 
 **English** | [한국어](bridge-hermes-only-install-ko.md)
 
-Use this runbook when a new PC or Hermes Agent should install only `hermes-omx-notify` plus Hermes/Discord notification integration.
+Use this runbook when a new PC or Hermes Agent should install only `hermes-tmux-bridge` plus Hermes/Discord notification integration.
 
 ## Goal
 
 The install is complete when only the following are working:
 
-1. The `hermes-omx-notify` server runs on `127.0.0.1:3037` as a systemd user service.
-2. Hermes has the `hermes-omx-notify`, `tm-new`, `tm-send`, and `tm-kill` skills installed.
-3. The Hermes Gateway webhook subscription `omx-notify` receives `AskPermission,FinalAnswer` events.
+1. The `hermes-tmux-bridge` server runs on `127.0.0.1:3037` as a systemd user service.
+2. Hermes has the `hermes-tmux-bridge`, `tm-new`, `tm-send`, and `tm-kill` skills installed.
+3. The Hermes Gateway webhook subscription `tmux-bridge` receives `AskPermission,FinalAnswer` events.
 4. Notifications reach a Discord project channel or session thread.
 5. The `tm-new`, `tm-send`, and `tm-kill` helper CLIs are on `PATH`.
 
@@ -37,7 +37,7 @@ Required:
 
 Recommended:
 
-- Per-project Discord channel mapping, for example `hermes-omx-notify=345678901234567890`.
+- Per-project Discord channel mapping, for example `hermes-tmux-bridge=345678901234567890`.
 - Discord user IDs to mention on `SessionStart`, for example `456789012345678901`.
 
 Optional:
@@ -70,8 +70,8 @@ Gateway env locations vary by install. The agent should ask the operator for the
 ## Clone and verify
 
 ```bash
-git clone https://github.com/chiznoir/hermes-omx-notify.git
-cd hermes-omx-notify
+git clone https://github.com/chiznoir/hermes-tmux-bridge.git
+cd hermes-tmux-bridge
 npm install
 npm test
 ```
@@ -104,7 +104,7 @@ scripts/install-hermes-stack.sh \
   --direct \
   --threads \
   --channel <fallback-discord-channel-id> \
-  --project hermes-omx-notify=<project-channel-id> \
+  --project hermes-tmux-bridge=<project-channel-id> \
   --project other-project=<other-project-channel-id> \
   --bot-token '<discord-bot-token>' \
   --guild <discord-guild-or-server-id> \
@@ -114,9 +114,9 @@ scripts/install-hermes-stack.sh \
 If the bridge stays on the same host at `127.0.0.1`, the bridge bearer token can be empty. If it is exposed through Docker, LAN, a reverse proxy, or public access, create a token file and add `--token-file`.
 
 ```bash
-mkdir -p ~/.config/hermes-omx-notify
-openssl rand -hex 32 > ~/.config/hermes-omx-notify/bridge.token
-chmod 600 ~/.config/hermes-omx-notify/bridge.token
+mkdir -p ~/.config/hermes-tmux-bridge
+openssl rand -hex 32 > ~/.config/hermes-tmux-bridge/bridge.token
+chmod 600 ~/.config/hermes-tmux-bridge/bridge.token
 
 scripts/install-hermes-stack.sh \
   --webhook \
@@ -129,7 +129,7 @@ scripts/install-hermes-stack.sh \
   --bot-token '<discord-bot-token>' \
   --guild <discord-guild-or-server-id> \
   --mention-users <discord-user-id> \
-  --token-file ~/.config/hermes-omx-notify/bridge.token
+  --token-file ~/.config/hermes-tmux-bridge/bridge.token
 ```
 
 ## Bridge-only mode where Hermes queries the API directly
@@ -148,29 +148,29 @@ In this mode, `FinalAnswer` / `AskPermission` automatic notifications will not b
 ~/.local/bin/tm-new
 ~/.local/bin/tm-send
 ~/.local/bin/tm-kill
-~/.hermes/skills/autonomous-ai-agents/hermes-omx-notify/SKILL.md
+~/.hermes/skills/autonomous-ai-agents/hermes-tmux-bridge/SKILL.md
 ~/.hermes/skills/autonomous-ai-agents/tm-new/SKILL.md
 ~/.hermes/skills/autonomous-ai-agents/tm-send/SKILL.md
 ~/.hermes/skills/autonomous-ai-agents/tm-kill/SKILL.md
-~/.config/systemd/user/hermes-omx-notify.service
-~/.config/hermes-omx-notify/hermes-omx-notify.env
-~/.config/hermes-omx-notify/hermes-webhook.secret
-~/.config/hermes-omx-notify/project-channels.json
+~/.config/systemd/user/hermes-tmux-bridge.service
+~/.config/hermes-tmux-bridge/hermes-tmux-bridge.env
+~/.config/hermes-tmux-bridge/hermes-webhook.secret
+~/.config/hermes-tmux-bridge/project-channels.json
 ~/.hermes/webhook_subscriptions.json
 ```
 
 ## Verify
 
 ```bash
-systemctl --user is-active hermes-omx-notify.service
-systemctl --user status hermes-omx-notify.service --no-pager
+systemctl --user is-active hermes-tmux-bridge.service
+systemctl --user status hermes-tmux-bridge.service --no-pager
 curl -fsS http://127.0.0.1:3037/health | jq .
 
 systemctl --user is-active hermes-gateway.service
 curl -fsS http://127.0.0.1:8644/health | jq .
 
 command -v tm-new tm-send tm-kill
-hermes skills list | grep 'hermes-omx-notify'
+hermes skills list | grep 'hermes-tmux-bridge'
 ```
 
 Also verify that the webhook subscription prompt is current. `FinalAnswer` remains the internal event type, but the user-facing title should be `Session Idle`.
@@ -180,12 +180,12 @@ python - <<'PY'
 import json, os
 p = os.path.expanduser('~/.hermes/webhook_subscriptions.json')
 data = json.load(open(p))
-sub = data.get('omx-notify') or data.get('subscriptions', {}).get('omx-notify')
+sub = data.get('tmux-bridge') or data.get('subscriptions', {}).get('tmux-bridge')
 prompt = sub.get('prompt', '') if sub else ''
 assert sub and sub.get('events') == ['AskPermission', 'FinalAnswer']
 assert '제목 `Final Answer`' not in prompt
 assert 'Session Idle' in prompt
-print('ok: omx-notify subscription prompt is current')
+print('ok: tmux-bridge subscription prompt is current')
 PY
 ```
 

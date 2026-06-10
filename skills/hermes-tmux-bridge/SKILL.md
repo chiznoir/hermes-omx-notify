@@ -1,6 +1,6 @@
 ---
-name: hermes-omx-notify
-description: Use the local hermes-omx-notify read API to inspect bridge health, session lists, session state, latest idle/final answer text, events, interactions, and bridge Discord notification payloads. For session creation, prompt dispatch, or termination, hand those intents to tm-new, tm-send, or tm-kill.
+name: hermes-tmux-bridge
+description: Use the local hermes-tmux-bridge read API to inspect bridge health, session lists, session state, latest idle/final answer text, events, interactions, and bridge Discord notification payloads. For session creation, prompt dispatch, or termination, hand those intents to tm-new, tm-send, or tm-kill.
 version: 0.2.0
 author: Hermes Agent + oh-my-codex
 license: MIT
@@ -23,13 +23,13 @@ metadata:
       - 종료, kill, 킬, 죽여, stop session -> delegate to tm-kill
 ---
 
-# Hermes OMX Bridge
+# Hermes tmux bridge
 
-This is the bridge operations and read-API skill. It teaches Hermes how to read the `hermes-omx-notify` control plane, interpret bridge event payloads, and render bridge notifications. It is not the owner of session lifecycle mutations.
+This is the bridge operations and read-API skill. It teaches Hermes how to read the `hermes-tmux-bridge` control plane, interpret bridge event payloads, and render bridge notifications. It is not the owner of session lifecycle mutations.
 
 ## Responsibility Boundary
 
-- `hermes-omx-notify`: bridge server health, session list, session state, latest idle/final answer fullText, session events, command/interactions history, Discord notification rendering, channel/thread payload interpretation.
+- `hermes-tmux-bridge`: bridge server health, session list, session state, latest idle/final answer fullText, session events, command/interactions history, Discord notification rendering, channel/thread payload interpretation.
 - `tm-new`: create/start a new visible managed GJC tmux session.
 - `tm-send`: send/refine a follow-up instruction or approval/denial into an existing session.
 - `tm-kill`: stop/kill/close an existing managed GJC tmux session.
@@ -78,7 +78,7 @@ Prefer the bridge read API over raw tmux capture for status/history. Use raw tmu
 
 ## Hermes Webhook Sink Mode
 
-If a message arrives from the `omx-notify` webhook subscription, treat the payload as a bridge event envelope. Important fields include `event_type`, `event_context_line`, `notification_title`, `notification_summary`, `message_markdown`, `project`, `channel_id`, `discord_delivery_target_id`, `chunk_delivery_channel_id`, `channel_mapping_status`, `bridge_session_id`, `thread_id`, `discord_thread_id`, `tmux_id`, `text_preview`, `reply_options`, `approval_actions`, `notification_chunked`, `notification_chunk_index`, `notification_chunk_total`, and `read_endpoints`.
+If a message arrives from the `tmux-bridge` webhook subscription, treat the payload as a bridge event envelope. Important fields include `event_type`, `event_context_line`, `notification_title`, `notification_summary`, `message_markdown`, `project`, `channel_id`, `discord_delivery_target_id`, `chunk_delivery_channel_id`, `channel_mapping_status`, `bridge_session_id`, `thread_id`, `discord_thread_id`, `tmux_id`, `text_preview`, `reply_options`, `approval_actions`, `notification_chunked`, `notification_chunk_index`, `notification_chunk_total`, and `read_endpoints`.
 
 Notification rendering rules:
 

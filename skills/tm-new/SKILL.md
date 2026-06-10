@@ -7,7 +7,7 @@ prerequisites:
 metadata:
   hermes:
     tags: [omx, bridge, tmux, codex, session]
-    related_skills: [hermes-omx-notify, tm-send, tm-kill]
+    related_skills: [hermes-tmux-bridge, tm-send, tm-kill]
     requires_toolsets: [terminal]
     triggers:
       - 새 세션, 세션 열어, 시작해, create/launch/start/watch a new GJC session -> tm-new
@@ -23,7 +23,7 @@ Hermes should use `tm-new` rather than raw `gjc`; the helper applies managed tmu
 ## Boundary
 
 - Owns: creating/launching a new visible GJC tmux session.
-- Does not own: sending prompts to an existing session (`tm-send`), killing sessions (`tm-kill`), or bridge read/status inspection (`hermes-omx-notify`).
+- Does not own: sending prompts to an existing session (`tm-send`), killing sessions (`tm-kill`), or bridge read/status inspection (`hermes-tmux-bridge`).
 - Bridge webhook `SessionStart` alert bodies are notifications, not requests to create another session.
 - `/new` or `/resume` inside an existing Codex pane prompt is a Codex slash command and should be delivered by `tm-send`, not handled here.
 
@@ -48,7 +48,7 @@ tm-new /path/to/repo --json
 tm-new /path/to/repo --name gjc-project-main
 ```
 
-After launch, use `hermes-omx-notify` or:
+After launch, use `hermes-tmux-bridge` or:
 
 ```bash
 tm-send --project <project> "현재 상태를 요약해줘"

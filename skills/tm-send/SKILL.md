@@ -1,13 +1,13 @@
 ---
 name: tm-send
-description: Send a refined follow-up instruction to an existing GJC/bridge session through hermes-omx-notify using the local tm-send helper. Trigger when the user asks to 전달/보내/넘겨/반영/수정/계속 into a managed session or replies to a bridge notification.
+description: Send a refined follow-up instruction to an existing GJC/bridge session through hermes-tmux-bridge using the local tm-send helper. Trigger when the user asks to 전달/보내/넘겨/반영/수정/계속 into a managed session or replies to a bridge notification.
 version: 0.2.0
 prerequisites:
   commands: [tm-send]
 metadata:
   hermes:
     tags: [omx, bridge, command, codex, tmux]
-    related_skills: [hermes-omx-notify, tm-new, tm-kill]
+    related_skills: [hermes-tmux-bridge, tm-new, tm-kill]
     requires_toolsets: [terminal]
     triggers:
       - 전달, 전달해, 보내, 넘겨, 세션에 전달, follow-up -> tm-send
@@ -21,9 +21,9 @@ metadata:
 
 # TM Send
 
-This dispatch-specific skill exists because Hermes may load `tm-send` directly when the user names that skill or replies to a session notification. `hermes-omx-notify` handles bridge read/status/rendering; this file describes the dispatch rules so direct `skill_view("tm-send")` does not bypass prompt refinement.
+This dispatch-specific skill exists because Hermes may load `tm-send` directly when the user names that skill or replies to a session notification. `hermes-tmux-bridge` handles bridge read/status/rendering; this file describes the dispatch rules so direct `skill_view("tm-send")` does not bypass prompt refinement.
 
-Use `tm-send` to dispatch commands through hermes-omx-notify. Do not hand-build raw bridge `curl` calls. Do not silently fall back to unmanaged tmux paste; if bridge delivery fails, report the explicit failure unless the user explicitly asked for the managed `--tmux` path.
+Use `tm-send` to dispatch commands through hermes-tmux-bridge. Do not hand-build raw bridge `curl` calls. Do not silently fall back to unmanaged tmux paste; if bridge delivery fails, report the explicit failure unless the user explicitly asked for the managed `--tmux` path.
 
 For Discord-originated Hermes replies that dispatch a refined prompt into an existing session, use `tm-send --session <id> --discord-approval "<refined prompt>"`, then immediately present the returned approval question through Hermes `clarify` / AskUserQuestion. Do not use `--project` with `--discord-approval`, even when `--session` is also available; Discord-origin approval dispatch is session-only and must not rely on project/latest-session fallback. The bridge command only registers the pending approval; it does **not** by itself create Discord buttons. The Discord button/card is real only after Hermes calls `clarify` with the refined prompt and choices. Non-Discord/manual helper use may keep plain `tm-send --session <id>` or non-approval `tm-send --project <project>` when the user intentionally wants immediate dispatch.
 

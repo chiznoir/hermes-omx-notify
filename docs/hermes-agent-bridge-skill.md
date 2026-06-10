@@ -3,7 +3,7 @@
 현재 Hermes에 설치할 정식 스킬은 아래 파일입니다.
 
 ```text
-skills/hermes-omx-notify/SKILL.md
+skills/hermes-tmux-bridge/SKILL.md
 ```
 
 설치:

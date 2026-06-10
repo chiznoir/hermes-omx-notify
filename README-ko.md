@@ -1,4 +1,4 @@
-# hermes-omx-notify
+# hermes-tmux-bridge
 
 **Hermes, OMX, Codex, tmux 기반 에이전트 세션을 위한 localhost 우선 notification/control bridge.**
 
@@ -11,11 +11,11 @@
 ![localhost first](https://img.shields.io/badge/security-localhost--first-blue)
 ![tests](https://img.shields.io/badge/tests-node%20--test-brightgreen)
 
-`hermes-omx-notify`는 Hermes가 로컬 OMX/Codex 세션을 관측하고 제어할 수 있게 해주는 작은 bridge입니다. 기본적으로 `127.0.0.1`에서만 동작하며, OMX lifecycle evidence, Codex JSONL log, tmux pane을 읽어 선택된 이벤트를 Hermes Gateway / Discord로 전달합니다.
+`hermes-tmux-bridge`는 Hermes가 로컬 OMX/Codex 세션을 관측하고 제어할 수 있게 해주는 작은 bridge입니다. 기본적으로 `127.0.0.1`에서만 동작하며, OMX lifecycle evidence, Codex JSONL log, tmux pane을 읽어 선택된 이벤트를 Hermes Gateway / Discord로 전달합니다.
 
 ```text
 Hermes / Discord
-  -> 127.0.0.1에서 실행되는 hermes-omx-notify
+  -> 127.0.0.1에서 실행되는 hermes-tmux-bridge
      -> session registry / event router / command dispatch / audit log
   -> local OMX + Codex JSONL logs + tmux panes
 ```
@@ -35,8 +35,8 @@ Hermes / Discord
 에이전트가 그대로 따라 할 수 있는 전체 설치 절차는 [INSTALL.md](INSTALL.md)를 사용하세요. Hermes Gateway와 Discord가 이미 준비되어 있다면 가장 짧은 경로는 아래입니다.
 
 ```bash
-git clone https://github.com/chiznoir/hermes-omx-notify.git
-cd hermes-omx-notify
+git clone https://github.com/chiznoir/hermes-tmux-bridge.git
+cd hermes-tmux-bridge
 npm install
 npm test
 
@@ -45,13 +45,13 @@ scripts/install-hermes-stack.sh \
   --non-interactive \
   --restart \
   --channel <fallback-discord-channel-id> \
-  --project hermes-omx-notify=<project-discord-channel-id>
+  --project hermes-tmux-bridge=<project-discord-channel-id>
 ```
 
 설치 확인:
 
 ```bash
-systemctl --user status hermes-omx-notify.service --no-pager
+systemctl --user status hermes-tmux-bridge.service --no-pager
 curl -sS http://127.0.0.1:3037/health
 curl -sS http://127.0.0.1:3037/sessions
 command -v tm-new tm-send tm-kill

@@ -294,7 +294,7 @@ test('splitNotificationMarkdown preserves markdown fence balance and ordinal mar
 
 test('Hermes subscription prompt keeps FinalAnswer summaries sufficiently detailed', async () => {
   const promptSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
-  const skillSource = await readFile(join(process.cwd(), 'skills', 'hermes-omx-notify', 'SKILL.md'), 'utf8');
+  const skillSource = await readFile(join(process.cwd(), 'skills', 'hermes-tmux-bridge', 'SKILL.md'), 'utf8');
   const promptMatch = /cat <<'PROMPT'\n([\s\S]*?)\nPROMPT/.exec(promptSource);
   assert.ok(promptMatch, 'subscription prompt heredoc exists');
 
@@ -341,7 +341,7 @@ test('Hermes subscription prompt keeps FinalAnswer summaries sufficiently detail
 test('Hermes trigger phrases route to helper CLI and bridge read API', async () => {
   const promptSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
   const skillSource = await readFile(join(process.cwd(), 'skills', 'tm-send', 'SKILL.md'), 'utf8');
-  const bridgeSkillSource = await readFile(join(process.cwd(), 'skills', 'hermes-omx-notify', 'SKILL.md'), 'utf8');
+  const bridgeSkillSource = await readFile(join(process.cwd(), 'skills', 'hermes-tmux-bridge', 'SKILL.md'), 'utf8');
   const operationsSource = await readFile(join(process.cwd(), 'docs', 'operations.md'), 'utf8');
   const tmNewSource = await readFile(join(process.cwd(), 'skills', 'tm-new', 'SKILL.md'), 'utf8');
   const tmKillSource = await readFile(join(process.cwd(), 'skills', 'tm-kill', 'SKILL.md'), 'utf8');
@@ -423,7 +423,7 @@ test('operations docs identify runtime Hermes rule injection surfaces', async ()
   for (const needle of [
     'scripts/install-hermes-stack.sh',
     '~/.hermes/webhook_subscriptions.json',
-    'skills/hermes-omx-notify/SKILL.md',
+    'skills/hermes-tmux-bridge/SKILL.md',
     'src/hermes-webhook-sink.js',
     'src/server.js',
     'GJC tmux lifecycle',
@@ -437,7 +437,7 @@ test('Hermes docs track current repository helper CLI contract', async () => {
     await readFile(join(process.cwd(), 'README.md'), 'utf8'),
     await readFile(join(process.cwd(), 'docs', 'operations.md'), 'utf8'),
     await readFile(join(process.cwd(), 'docs', 'hermes-gateway-integration.md'), 'utf8'),
-    await readFile(join(process.cwd(), 'skills', 'hermes-omx-notify', 'SKILL.md'), 'utf8'),
+    await readFile(join(process.cwd(), 'skills', 'hermes-tmux-bridge', 'SKILL.md'), 'utf8'),
     await readFile(join(process.cwd(), 'skills', 'tm-new', 'SKILL.md'), 'utf8'),
     await readFile(join(process.cwd(), 'skills', 'tm-send', 'SKILL.md'), 'utf8'),
     await readFile(join(process.cwd(), 'skills', 'tm-kill', 'SKILL.md'), 'utf8'),
@@ -459,7 +459,7 @@ test('Hermes docs track current repository helper CLI contract', async () => {
 test('Hermes command dispatch rules rely on User Command events and meaning-preserving executable prompt refinement', async () => {
   const promptSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
   const skillSource = await readFile(join(process.cwd(), 'skills', 'tm-send', 'SKILL.md'), 'utf8');
-  const bridgeSkillSource = await readFile(join(process.cwd(), 'skills', 'hermes-omx-notify', 'SKILL.md'), 'utf8');
+  const bridgeSkillSource = await readFile(join(process.cwd(), 'skills', 'hermes-tmux-bridge', 'SKILL.md'), 'utf8');
   const operationsSource = await readFile(join(process.cwd(), 'docs', 'operations.md'), 'utf8');
   const quickstartSource = await readFile(join(process.cwd(), 'docs', 'quickstart.md'), 'utf8');
   const integrationSource = await readFile(join(process.cwd(), 'docs', 'hermes-gateway-integration.md'), 'utf8');
@@ -541,7 +541,7 @@ test('Hermes command dispatch rules rely on User Command events and meaning-pres
     assert.match(docSource, /User Command/);
     assert.match(docSource, /FinalAnswer/);
     assert.match(docSource, /FinalAnswer.*\(i\/N\)|\(i\/N\).*FinalAnswer/s);
-    assert.match(docSource, /hermes-omx-notify,tm-new,tm-send,tm-kill/);
+    assert.match(docSource, /hermes-tmux-bridge,tm-new,tm-send,tm-kill/);
     assert.match(docSource, /skills\/tm-send\/SKILL\.md/);
   }
 });
@@ -569,8 +569,8 @@ test('tm-send dispatch skill cannot bypass prompt refinement when loaded directl
   assert.match(installerSource, /Helper skills/);
   assert.match(installerSource, /tm-new\|skills\/tm-new/);
   const stackInstallerSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
-  assert.match(stackInstallerSource, /--skills hermes-omx-notify,tm-new,tm-send,tm-kill/);
-  assert.match(stackInstallerSource, /skills: \['hermes-omx-notify', 'tm-new', 'tm-send', 'tm-kill'\]/);
+  assert.match(stackInstallerSource, /--skills hermes-tmux-bridge,tm-new,tm-send,tm-kill/);
+  assert.match(stackInstallerSource, /skills: \['hermes-tmux-bridge', 'tm-new', 'tm-send', 'tm-kill'\]/);
 });
 
 test('Hermes prompt separates routing metadata from delivered payload instructions', async () => {
@@ -737,8 +737,8 @@ test('eventToHermesPayload formats SessionEnd duration like OMX notification', (
 
 test('sessionContextLine falls back to stable session identifiers', () => {
   assert.equal(
-    sessionContextLine({ tmuxPaneId: '%42', bridgeSessionId: 'bridge-1', project: 'hermes-omx-notify' }),
-    '**session:** `bridge-1`\n**tmux:** `%42` | **project:** `hermes-omx-notify`',
+    sessionContextLine({ tmuxPaneId: '%42', bridgeSessionId: 'bridge-1', project: 'hermes-tmux-bridge' }),
+    '**session:** `bridge-1`\n**tmux:** `%42` | **project:** `hermes-tmux-bridge`',
   );
   assert.equal(
     sessionContextLine({ bridgeSessionId: 'bridge-1' }),
