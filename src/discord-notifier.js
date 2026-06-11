@@ -776,6 +776,21 @@ async function resolveDiscordDeliveryTarget(session = {}, event = {}, channel = 
     return missingSessionThreadTarget('missing-session-thread');
   }
 
+  const latestMap = await readProjectChannelMap(options);
+  const latestMapped = discordThreadForSession(session, latestMap, options);
+  if (latestMapped.threadId) {
+    if (!latestMapped.channelId || latestMapped.channelId === channel.channelId) {
+      return { ok: true, channelId: latestMapped.threadId, map: latestMap, thread: latestMapped };
+    }
+    return {
+      ok: false,
+      reason: 'mapped-session-thread-parent-mismatch',
+      channelId: null,
+      map: latestMap,
+      thread: latestMapped,
+    };
+  }
+
   const desiredThreadName = discordThreadNameForSession(session, options);
   const lookup = await ensureDiscordThreadByName(channel.channelId, desiredThreadName, {
     ...options,

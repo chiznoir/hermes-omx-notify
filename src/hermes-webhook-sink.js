@@ -678,6 +678,15 @@ async function resolveHermesDiscordThreadTarget(session = {}, channel = {}, chan
   if (mapped.threadId && (!mapped.channelId || mapped.channelId === channel.channelId)) {
     return { ok: true, channelId: mapped.threadId, map: null, thread: mapped };
   }
+  if (mapped.threadId) {
+    return {
+      ok: false,
+      reason: 'mapped-session-thread-parent-mismatch',
+      channelId: null,
+      map: null,
+      thread: mapped,
+    };
+  }
 
   if (!channel.channelId) {
     return { ok: false, reason: 'missing-parent-channel-id', channelId: null, map: null, thread: null };
@@ -685,6 +694,21 @@ async function resolveHermesDiscordThreadTarget(session = {}, channel = {}, chan
 
   if (!shouldCreateMissingSessionThread(options.event, { ...options, session })) {
     return missingSessionThreadTarget('missing-session-thread');
+  }
+
+  const latestMap = await readProjectChannelMap(options);
+  const latestMapped = discordThreadForSession(session, latestMap, options);
+  if (latestMapped.threadId && (!latestMapped.channelId || latestMapped.channelId === channel.channelId)) {
+    return { ok: true, channelId: latestMapped.threadId, map: latestMap, thread: latestMapped };
+  }
+  if (latestMapped.threadId) {
+    return {
+      ok: false,
+      reason: 'mapped-session-thread-parent-mismatch',
+      channelId: null,
+      map: latestMap,
+      thread: latestMapped,
+    };
   }
 
   const desiredThreadName = discordThreadNameForSession(session, options);

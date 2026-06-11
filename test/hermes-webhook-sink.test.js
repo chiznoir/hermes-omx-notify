@@ -2173,6 +2173,95 @@ test('pollHermesWebhookNotifications holds GJC FinalAnswer until fast lifecycle 
   assert.match(posts[0].body.content, /안녕 테스트 한줄 출력/);
 });
 
+
+test('pollHermesWebhookNotifications rechecks session thread map before creating a GJC direct thread', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'gjc-hermes-stale-map-'));
+  const statePath = join(root, 'state.json');
+  const eventIndexPath = join(root, 'events.sqlite');
+  const mapPath = join(root, 'project-channels.json');
+  const hermesConfigPath = join(root, 'hermes-config.yaml');
+  const project = root.split('/').pop();
+  const sessionId = '019e9000-8080-7000-aaaa-ffffffffffff';
+  const startedAt = '2026-06-04T10:00:00.000Z';
+  await writeFile(mapPath, JSON.stringify({ projects: { [project]: 'project-channel' } }));
+  await writeFile(hermesConfigPath, 'discord:\n  free_response_channels: other-channel\n  allowed_channels: other-channel\n');
+
+  const index = await openEventIndex(root, { eventIndexPath });
+  try {
+    upsertEvents(index.db, [{
+      session: {
+        backend: 'gjc',
+        lifecycleOwner: 'gjc',
+        hasOmxLifecycle: false,
+        gjcSessionId: sessionId,
+        bridgeSessionId: sessionId,
+        threadId: sessionId,
+        project,
+        startedAt,
+      },
+      event: {
+        eventId: `${sessionId}:final`,
+        type: 'FinalAnswer',
+        source: 'gjc-log',
+        timestamp: '2026-06-04T10:00:02.000Z',
+        text: 'GJC direct 완료 답변',
+        phase: 'final_answer',
+      },
+    }]);
+  } finally {
+    closeEventIndex(index);
+  }
+
+  const discordRequests = [];
+  const result = await pollHermesWebhookNotifications({
+    projectRoot: root,
+    discoverTmuxProjectRoots: false,
+    statePath,
+    eventIndexPath,
+    projectChannelMapPath: mapPath,
+    hermesConfigPath,
+    updateHermesConfig: true,
+    webhookUrl: 'http://hermes.test/webhook',
+    eventTypes: new Set(['FinalAnswer']),
+    replay: true,
+    autoCreateDiscordThreads: true,
+    notificationMode: 'direct',
+    discordBotToken: 'test-token',
+    discordGuildId: 'guild-1',
+    hermesGatewayRestarter: async () => {
+      await writeFile(mapPath, JSON.stringify({
+        projects: { [project]: 'project-channel' },
+        sessionThreads: {
+          [sessionId]: {
+            project,
+            parentChannelId: 'project-channel',
+            threadId: 'existing-gjc-thread',
+            threadName: 'gjc-existing-thread',
+            createdAt: '2026-06-04T10:00:01.000Z',
+          },
+        },
+      }));
+      return { ok: true, restarted: true };
+    },
+    fetchFn: async () => { throw new Error('Hermes webhook should not receive direct GJC final'); },
+    discordFetchFn: async (url, request = {}) => {
+      const method = request.method || 'GET';
+      const body = request.body ? JSON.parse(request.body) : null;
+      discordRequests.push({ url, method, body });
+      if (method === 'POST' && url.endsWith('/channels/existing-gjc-thread/messages')) {
+        return { ok: true, json: async () => ({ id: 'message-1' }), text: async () => '' };
+      }
+      throw new Error(`unexpected Discord request: ${method} ${url}`);
+    },
+  });
+
+  assert.equal(result.sent, 1);
+  assert.equal(discordRequests.filter((request) => request.url.endsWith('/channels/project-channel/threads')).length, 0);
+  const posts = discordRequests.filter((request) => request.url.endsWith('/channels/existing-gjc-thread/messages'));
+  assert.equal(posts.length, 1);
+  assert.match(posts[0].body.content, /^# Session Idle/);
+});
+
 test('pollHermesWebhookNotifications retargets stale resumed FinalAnswer to the current OMX session thread', async () => {
   const root = await mkdtemp(join(tmpdir(), 'omx-bridge-hermes-resume-current-thread-'));
   const statePath = join(root, 'state.json');
