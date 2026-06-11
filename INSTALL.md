@@ -85,14 +85,22 @@ This installs helper CLIs, the Hermes skill, and the bridge server. It does not 
 
 Use this when bridge events should be pushed to Hermes Gateway and delivered to Discord.
 
+For the full recommended Discord setup, including per-session Discord threads and managed `tm-new --gjc` notifications, provide the Discord bot token and guild id as well as the fallback/project channel ids:
+
 ```bash
 scripts/install-hermes-stack.sh \
   --webhook \
   --non-interactive \
   --restart \
+  --threads \
   --channel <fallback-discord-channel-id> \
-  --project <project-name>=<project-discord-channel-id>
+  --project <project-name>=<project-discord-channel-id> \
+  --bot-token-file <discord-bot-token-file> \
+  --guild <discord-guild-id> \
+  --config ~/.hermes/config.yaml
 ```
+
+Use `--bot-token <token>` only for a local interactive shell where the value will not be logged. Automation should prefer `--bot-token-file`. Add `--alert-channel <ops-discord-channel-id>` when delivery-dead alerts should go somewhere other than the fallback channel.
 
 Before or immediately after this step, ensure Hermes Gateway has matching webhook env:
 
@@ -102,7 +110,24 @@ WEBHOOK_PORT=8644
 WEBHOOK_SECRET=<same value as the bridge webhook secret file>
 ```
 
-The installer creates the bridge secret file when webhook mode is enabled. Do not print the secret value. Report only the path.
+Hermes Gateway must already be installed and able to reach its configured Discord bot. The installer creates the bridge secret file when webhook mode is enabled, but it does not install Hermes Gateway or invent Discord credentials. Do not print the secret value. Report only the path.
+
+With the full command above, the bridge service env should include only enabled non-defaults/secrets such as:
+
+```env
+BRIDGE_HERMES_WEBHOOK_ENABLED=true
+BRIDGE_HERMES_WEBHOOK_URL=http://127.0.0.1:8644/webhooks/tmux-bridge
+BRIDGE_HERMES_WEBHOOK_SECRET=<same value as Hermes WEBHOOK_SECRET>
+BRIDGE_HERMES_DEFAULT_CHANNEL_ID=<fallback-discord-channel-id>
+BRIDGE_DISCORD_BOT_TOKEN=<from bot token file>
+BRIDGE_DISCORD_GUILD_ID=<discord-guild-id>
+BRIDGE_DISCORD_FAST_EVENTS_ENABLED=true
+BRIDGE_DISCORD_AUTO_CREATE_THREADS=true
+BRIDGE_NOTIFY_INCLUDE_UNMAPPED_CODEX_LOGS=true
+BRIDGE_HERMES_NOTIFICATION_MODE=direct
+```
+
+Do not add the raw token or secret to the final report. It is enough to report the token/secret file paths and that the service is active.
 
 When a Hermes config path is available, the service env uses the short allowlist keys:
 
@@ -205,6 +230,17 @@ curl -sS http://127.0.0.1:8644/health
 hermes webhook list | grep tmux-bridge
 journalctl --user -u hermes-tmux-bridge.service --no-pager -n 100 | grep 'bridge Hermes webhook sink enabled'
 ```
+
+Threaded Discord/GJC validation:
+
+```bash
+journalctl --user -u hermes-tmux-bridge.service --no-pager -n 100 | grep 'bridge Discord notifier enabled'
+grep -E 'BRIDGE_DISCORD_(BOT_TOKEN|GUILD_ID|FAST_EVENTS_ENABLED|AUTO_CREATE_THREADS)' \
+  ~/.config/systemd/user/hermes-tmux-bridge.service.d/override.conf
+tm-new --gjc <project-dir>
+```
+
+The `tm-new --gjc` smoke test creates a real tmux session and may create real Discord notifications. If the operator does not want live Discord traffic, skip the smoke test and validate only service/env/health.
 
 ## Final report format
 
