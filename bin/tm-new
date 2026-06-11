@@ -370,6 +370,14 @@ fi
 sleep 1
 if ! tmux has-session -t "$session_name" 2>/dev/null; then
   if [[ "$backend" == "gjc" ]]; then
+    if [[ "$attach" -eq 1 ]]; then
+      if [[ "$print_json" -eq 1 ]]; then
+        emit_result_json "$cmd_text" "GJC tmux session ended before post-launch registration"
+      else
+        log "GJC tmux session ended before post-launch registration: $session_name"
+      fi
+      exit 0
+    fi
     die_gjc_launch "tmux session was not created or is no longer alive: $session_name"
   fi
   die "tmux session was not created or is no longer alive: $session_name"

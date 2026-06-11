@@ -493,6 +493,10 @@ if [[ -n "\${GJC_TMUX_SESSION:-}" ]]; then
     mkdir -p "$HOME/.gjc/agent/sessions/duplicate"
     printf '{"type":"session","id":"gjc-session-main","cwd":"%s","timestamp":"%s"}\n' "$run_dir" "$timestamp" > "$HOME/.gjc/agent/sessions/duplicate/session.jsonl"
   fi
+  if [[ "\${HERMES_TEST_GJC_CLOSE_AFTER_LAUNCH:-}" == "1" ]]; then
+    grep -Fxv "$GJC_TMUX_SESSION" ${JSON.stringify(statePath)} > ${JSON.stringify(statePath)}.tmp 2>/dev/null || true
+    mv ${JSON.stringify(statePath)}.tmp ${JSON.stringify(statePath)}
+  fi
 fi
 exit 0
 `);
@@ -578,6 +582,26 @@ test('tm-new --gjc uses native gjc --tmux with worktree and attach shorthand', a
   assert.match(log, /tmux:set-option -t gjc-main -q @gjc-session-id gjc-session-main/);
   assert.doesNotMatch(log, /tmux:new-session .*gjc/);
   assert.match(log, /tmux:attach-session -t gjc-main|tmux:switch-client -t gjc-main/);
+});
+
+test('tm-new --gjc attach treats a user-closed native GJC tmux session as normal', async () => {
+  const { env, logPath } = await makeTmNewHarness();
+  env.HERMES_TEST_GJC_CLOSE_AFTER_LAUNCH = '1';
+
+  const { stdout, stderr } = await execFile('bash', [
+    'bin/tm-new', 'a', '--gjc', '--name', 'gjc-closed', '--json', '--no-check'
+  ], { env, maxBuffer: 1024 * 1024 });
+  const result = JSON.parse(stdout.trim().split('\n').find((line) => line.startsWith('{')));
+  const log = await readHarnessLog(logPath);
+
+  assert.equal(result.backend, 'gjc');
+  assert.equal(result.attach, true);
+  assert.equal(result.tmuxId, 'gjc-closed');
+  assert.match(result.message, /ended before post-launch registration/);
+  assert.doesNotMatch(stderr, /error:/);
+  assert.match(log, /gjc:GJC_TMUX_SESSION=gjc-closed args=--tmux/);
+  assert.doesNotMatch(log, /tmux:set-option -t gjc-closed -q @gjc-session-id/);
+  assert.doesNotMatch(log, /tmux:attach-session -t gjc-closed|tmux:switch-client -t gjc-closed/);
 });
 
 test('tm-new --gjc rejects ambiguous duplicate new GJC logs even with the same id', async () => {
