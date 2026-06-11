@@ -394,3 +394,220 @@ test('core worktree does not expose extension helper scripts', async () => {
     assert.equal(binReadme.includes(removed), false);
   }
 });
+
+async function makeTmNewHarness() {
+  const env = await tempEnv();
+  const fakeBin = join(env.HOME, 'fake-bin');
+  await mkdir(fakeBin, { recursive: true });
+  const logPath = join(env.HOME, 'calls.log');
+  const statePath = join(env.HOME, 'tmux-sessions');
+  const optionPath = join(env.HOME, 'tmux-options');
+  await writeFile(join(fakeBin, 'tmux'), `#!/usr/bin/env bash
+set -euo pipefail
+log=${JSON.stringify(logPath)}
+state=${JSON.stringify(statePath)}
+options=${JSON.stringify(optionPath)}
+printf 'tmux:%s\n' "$*" >> "$log"
+case "$1" in
+  has-session)
+    target=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in -t) target="$2"; shift 2 ;; *) shift ;; esac
+    done
+    grep -Fxq "$target" "$state" 2>/dev/null
+    ;;
+  new-session)
+    session=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in -s) session="$2"; shift 2 ;; *) shift ;; esac
+    done
+    [[ -n "$session" ]] && printf '%s\n' "$session" >> "$state"
+    exit 0 ;;
+  kill-session)
+    target=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in -t) target="$2"; shift 2 ;; *) shift ;; esac
+    done
+    if [[ -n "$target" ]]; then
+      grep -Fxv "$target" "$state" > "$state.tmp" 2>/dev/null || true
+      mv "$state.tmp" "$state"
+    fi
+    exit 0 ;;
+  set-option)
+    target=""
+    opt=""
+    value=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        -t) target="$2"; shift 2 ;;
+        -q) shift ;;
+        @*) opt="$1"; value="$2"; shift 2 ;;
+        *) shift ;;
+      esac
+    done
+    [[ -n "$target" && -n "$opt" ]] && printf '%s\t%s\t%s\n' "$target" "$opt" "$value" >> "$options"
+    exit 0 ;;
+  show-options)
+    target=""
+    opt=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        -t) target="$2"; shift 2 ;;
+        -*) shift ;;
+        @*) opt="$1"; shift ;;
+        *) shift ;;
+      esac
+    done
+    awk -F '\t' -v t="$target" -v o="$opt" '$1==t && $2==o { v=$3 } END { if (v != "") print v }' "$options" 2>/dev/null
+    exit 0 ;;
+  list-panes) printf '%%1\n'; exit 0 ;;
+  switch-client|attach-session) exit 0 ;;
+  *) exit 0 ;;
+esac
+`);
+  await writeFile(join(fakeBin, 'omx'), `#!/usr/bin/env bash
+set -euo pipefail
+printf 'omx:%s\n' "$*" >> ${JSON.stringify(logPath)}
+exit 0
+`);
+  await writeFile(join(fakeBin, 'gjc'), `#!/usr/bin/env bash
+set -euo pipefail
+printf 'gjc:GJC_TMUX_SESSION=%s args=%s\n' "\${GJC_TMUX_SESSION:-}" "$*" >> ${JSON.stringify(logPath)}
+if [[ -n "\${GJC_TMUX_SESSION:-}" ]]; then
+  run_dir="$PWD"
+  args=("$@")
+  for ((i=0; i<\${#args[@]}; i++)); do
+    if [[ "\${args[$i]}" == "--worktree" ]]; then
+      run_dir="\${args[$((i+1))]}"
+    fi
+  done
+  printf '%s\n' "$GJC_TMUX_SESSION" >> ${JSON.stringify(statePath)}
+  tmux set-option -t "$GJC_TMUX_SESSION" -q @gjc-profile 1
+  tmux set-option -t "$GJC_TMUX_SESSION" -q @gjc-branch gjc
+  tmux set-option -t "$GJC_TMUX_SESSION" -q @gjc-branch-slug gjc
+  tmux set-option -t "$GJC_TMUX_SESSION" -q @gjc-project "$(basename "$run_dir")"
+  mkdir -p "$HOME/.gjc/agent/sessions/test"
+  timestamp="$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"
+  printf '{"type":"session","id":"gjc-session-main","cwd":"%s","timestamp":"%s"}\n' "$run_dir" "$timestamp" > "$HOME/.gjc/agent/sessions/test/session.jsonl"
+  if [[ "\${HERMES_TEST_DUPLICATE_GJC_LOG:-}" == "1" ]]; then
+    mkdir -p "$HOME/.gjc/agent/sessions/duplicate"
+    printf '{"type":"session","id":"gjc-session-main","cwd":"%s","timestamp":"%s"}\n' "$run_dir" "$timestamp" > "$HOME/.gjc/agent/sessions/duplicate/session.jsonl"
+  fi
+fi
+exit 0
+`);
+  await writeFile(join(fakeBin, 'curl'), `#!/usr/bin/env bash
+exit 0
+`);
+  for (const name of ['tmux', 'omx', 'gjc', 'curl']) await chmod(join(fakeBin, name), 0o755);
+  env.PATH = `${fakeBin}:${env.PATH}`;
+  env.OMX_BRIDGE_URL = 'http://127.0.0.1:3999';
+  return { env, logPath };
+}
+
+async function readHarnessLog(logPath) {
+  try { return await readFile(logPath, 'utf8'); }
+  catch { return ''; }
+}
+
+test('tm-new defaults to OMX and supports reserved attach token a', async () => {
+  const { env, logPath } = await makeTmNewHarness();
+  const { stdout } = await execFile('bash', [
+    'bin/tm-new', 'a', '.', '--name', 'omx-main', '--json', '--no-check', '--', 'a'
+  ], { env, maxBuffer: 1024 * 1024 });
+  const jsonLine = stdout.trim().split('\n').find((line) => line.startsWith('{'));
+  const result = JSON.parse(jsonLine);
+  const log = await readHarnessLog(logPath);
+
+  assert.equal(result.backend, 'omx');
+  assert.equal(result.attach, true);
+  assert.equal(result.tmuxId, 'omx-main');
+  assert.match(result.command, /omx --madmax --high/);
+  assert.match(result.command, / a ?$/);
+  assert.match(log, /tmux:new-session -d -s omx-main/);
+  assert.match(log, /omx --madmax --high/);
+  assert.match(log, /tmux:attach-session -t omx-main|tmux:switch-client -t omx-main/);
+  assert.doesNotMatch(log, /^gjc:/m);
+});
+
+test('tm-new treats standalone a after project as attach and ./a as a path', async () => {
+  const { env, logPath } = await makeTmNewHarness();
+  const dirA = join(env.HOME, 'a');
+  await mkdir(dirA, { recursive: true });
+
+  const afterProject = await execFile('bash', [
+    'bin/tm-new', env.HOME, 'a', '--name', 'omx-after', '--json', '--no-check'
+  ], { env, maxBuffer: 1024 * 1024 });
+  const afterJson = JSON.parse(afterProject.stdout.trim().split('\n').find((line) => line.startsWith('{')));
+  assert.equal(afterJson.attach, true);
+  assert.equal(afterJson.projectDir, env.HOME);
+
+  const pathCase = await execFile('bash', [
+    join(process.cwd(), 'bin', 'tm-new'), './a', '--name', 'omx-path', '--json', '--no-check'
+  ], { env: { ...env, PWD: env.HOME }, cwd: env.HOME, maxBuffer: 1024 * 1024 });
+  const pathJson = JSON.parse(pathCase.stdout.trim().split('\n').find((line) => line.startsWith('{')));
+  assert.equal(pathJson.attach, false);
+  assert.equal(pathJson.projectDir, dirA);
+
+  const log = await readHarnessLog(logPath);
+  assert.match(log, /tmux:new-session -d -s omx-after/);
+  assert.match(log, /tmux:new-session -d -s omx-path/);
+});
+
+test('tm-new --gjc uses native gjc --tmux with worktree and attach shorthand', async () => {
+  const { env, logPath } = await makeTmNewHarness();
+  const worktree = join(env.HOME, 'task-worktree');
+  await mkdir(worktree, { recursive: true });
+  const { stdout } = await execFile('bash', [
+    'bin/tm-new', '--gjc', '.', 'a', '--name', 'gjc-main', '--worktree', worktree, '--json', '--no-check', '--', '--model', 'opus'
+  ], { env, maxBuffer: 1024 * 1024 });
+  const result = JSON.parse(stdout.trim().split('\n').find((line) => line.startsWith('{')));
+  const log = await readHarnessLog(logPath);
+
+  assert.equal(result.backend, 'gjc');
+  assert.equal(result.managed, true);
+  assert.equal(result.attach, true);
+  assert.equal(result.tmuxId, 'gjc-main');
+  assert.equal(result.worktree, worktree);
+  assert.match(result.command, /GJC_LAUNCH_POLICY=tmux/);
+  assert.match(result.command, /GJC_TMUX_SESSION=gjc-main/);
+  assert.match(result.command, new RegExp(`gjc --tmux --worktree ${worktree.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} --model opus`));
+  assert.match(log, new RegExp(`gjc:GJC_TMUX_SESSION=gjc-main args=--tmux --worktree ${worktree.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')} --model opus`));
+  assert.match(log, /tmux:set-option -t gjc-main -q @gjc-branch gjc/);
+  assert.match(log, /tmux:set-option -t gjc-main -q @gjc-project task-worktree/);
+  assert.match(log, /tmux:set-option -t gjc-main -q @gjc-session-id gjc-session-main/);
+  assert.doesNotMatch(log, /tmux:new-session .*gjc/);
+  assert.match(log, /tmux:attach-session -t gjc-main|tmux:switch-client -t gjc-main/);
+});
+
+test('tm-new --gjc rejects ambiguous duplicate new GJC logs even with the same id', async () => {
+  const { env, logPath } = await makeTmNewHarness();
+  const worktree = join(env.HOME, 'ambiguous-worktree');
+  await mkdir(worktree, { recursive: true });
+
+  await assert.rejects(
+    execFile('bash', [
+      'bin/tm-new', '--gjc', '.', '--name', 'gjc-ambiguous', '--worktree', worktree, '--json', '--no-check'
+    ], { env: { ...env, HERMES_TEST_DUPLICATE_GJC_LOG: '1' }, maxBuffer: 1024 * 1024 }),
+    /ambiguous new GJC session logs for gjc-ambiguous: .*gjc-session-main@.*duplicate.*gjc-session-main@.*test|ambiguous new GJC session logs for gjc-ambiguous: .*gjc-session-main@.*test.*gjc-session-main@.*duplicate/,
+  );
+
+  const log = await readHarnessLog(logPath);
+  assert.match(log, /tmux:kill-session -t gjc-ambiguous/);
+});
+
+test('tm-new rejects GJC runs dir and GJC-only worktree misuse', async () => {
+  const { env } = await makeTmNewHarness();
+  await assert.rejects(
+    execFile('bash', ['bin/tm-new', '--gjc', '--runs', '/tmp/runs', '--no-check'], { env, maxBuffer: 1024 * 1024 }),
+    /--runs\/--runs-dir is not supported with --gjc/,
+  );
+  await assert.rejects(
+    execFile('bash', ['bin/tm-new', '--gjc', '--direct', '--no-check'], { env, maxBuffer: 1024 * 1024 }),
+    /--direct\/-d is not supported with --gjc/,
+  );
+  await assert.rejects(
+    execFile('bash', ['bin/tm-new', '--worktree', '../task', '--no-check'], { env, maxBuffer: 1024 * 1024 }),
+    /--worktree is only supported with --gjc/,
+  );
+});

@@ -52,7 +52,7 @@ BRIDGE_DISCORD_AUTO_CREATE_THREADS=true
 DISCORD_ALERT_CHANNEL_ID=<operator alert channel id>
 
 BRIDGE_HERMES_ALLOWLIST=true
-# GJC helper default: gjc (managed tmux launch)
+# tm-new default backend: OMX; explicit GJC uses tm-new --gjc
 ```
 
 선택값:
@@ -74,13 +74,14 @@ scripts/install-hermes-stack.sh --skip-cli
 자주 쓰는 예시는 아래입니다. 자세한 사용법은 `bin/README.md`와 각 CLI의 `--help`를 확인하세요.
 
 ```text
-tm-new [PROJECT_DIR] [--name SESSION] [--attach] [--direct] [--json] [--no-check] [-- GJC_ARGS...]
+tm-new [a] [PROJECT_DIR] [--name SESSION] [--attach] [--direct] [--json] [--runs PATH] [--no-check] [-- OMX_ARGS...]
+tm-new [a] --gjc [PROJECT_DIR] [--name SESSION] [--worktree PATH] [--json] [--no-check] [-- GJC_ARGS...]
 tm-send --session SESSION_ID [--dry|--dry-run] [--hold|--no-submit] '<prompt>'
 tm-send --session <bridgeSessionId> --discord-approval '<prompt>'
 tm-kill --session SESSION_ID
 ```
 
-Hermes가 visible session을 만들 때는 raw `gjc` 직접 실행 대신 `tm-new`를 사용합니다. `tm-new`는 managed GJC tmux session을 만들고 `@gjc-*` ownership tag를 검증한 뒤 bridge가 GJC JSONL + tmux metadata를 함께 관측하게 합니다. 운영 규칙에서 raw tmux paste나 unmanaged target dispatch를 기본 경로처럼 추가하지 않습니다.
+Hermes가 visible session을 만들 때는 `tm-new`를 사용합니다. 기본은 OMX session이며, GJC가 명시된 경우에만 `tm-new --gjc`를 사용합니다. GJC worktree는 `tm-new --gjc --worktree PATH`입니다. 별도 `gjc-new` helper, legacy alias, raw tmux paste, unmanaged target dispatch를 기본 경로처럼 추가하지 않습니다.
 
 ## 5. Hermes 규칙 주입 위치
 
@@ -88,7 +89,7 @@ Hermes가 visible session을 만들 때는 raw `gjc` 직접 실행 대신 `tm-ne
 
 - `scripts/install-hermes-stack.sh`: `subscription_prompt` 원본입니다. 설치 후 `~/.hermes/webhook_subscriptions.json`에 저장됩니다.
 - `skills/hermes-tmux-bridge/SKILL.md`: bridge read/status/notification rendering 규칙입니다.
-- `skills/tm-new/SKILL.md`: 새 GJC tmux lifecycle session 생성 규칙입니다.
+- `skills/tm-new/SKILL.md`: 새 session 생성 규칙입니다. `tm-new` default는 OMX, GJC는 `tm-new --gjc` opt-in입니다.
 - `skills/tm-send/SKILL.md`: 기존 session 전달, 의미 보존, routing metadata 제거, Discord approval flow 규칙입니다.
 - `skills/tm-kill/SKILL.md`: session 종료 규칙입니다.
 - `src/hermes-webhook-sink.js`: `AskPermission`/`FinalAnswer` payload와 delivery 경계입니다.

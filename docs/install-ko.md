@@ -11,7 +11,7 @@
 의존성 기준:
 
 - Node.js **20+** / npm: bridge server 실행, package 설치, test에 필요합니다.
-- `tmux`: visible managed GJC session과 `tm-new` / `tm-kill`에 필요합니다.
+- `tmux`: visible OMX session, 명시적 GJC session, `tm-new` / `tm-kill`에 필요합니다.
 - `curl`: health check, 설치 검증, helper CLI의 bridge HTTP 호출에 필요합니다.
 - `jq`: bridge JSON을 읽거나 JSON payload를 만드는 helper CLI에 필요합니다. 특히 `tm-send`와 `tm-kill`은 `jq`가 없으면 실행을 중단하므로, helper CLI를 `PATH`에 설치하는 모드에서는 필수로 봅니다.
 - Hermes Gateway: webhook/Discord push delivery를 켤 때만 필요합니다. agent bridge-only 모드는 Gateway 없이도 설치할 수 있습니다.

@@ -1,6 +1,6 @@
 ---
 name: tm-send
-description: Send a refined follow-up instruction to an existing GJC/bridge session through hermes-tmux-bridge using the local tm-send helper. Trigger when the user asks to 전달/보내/넘겨/반영/수정/계속 into a managed session or replies to a bridge notification.
+description: Send a refined follow-up instruction to an existing OMX/GJC bridge session through hermes-tmux-bridge using the local tm-send helper. Trigger when the user asks to 전달/보내/넘겨/반영/수정/계속 into a managed session or replies to a bridge notification.
 version: 0.2.0
 prerequisites:
   commands: [tm-send]
@@ -26,6 +26,14 @@ This dispatch-specific skill exists because Hermes may load `tm-send` directly w
 Use `tm-send` to dispatch commands through hermes-tmux-bridge. Do not hand-build raw bridge `curl` calls. Do not silently fall back to unmanaged tmux paste; if bridge delivery fails, report the explicit failure unless the user explicitly asked for the managed `--tmux` path.
 
 For Discord-originated Hermes replies that dispatch a refined prompt into an existing session, use `tm-send --session <id> --discord-approval "<refined prompt>"`, then immediately present the returned approval question through Hermes `clarify` / AskUserQuestion. Do not use `--project` with `--discord-approval`, even when `--session` is also available; Discord-origin approval dispatch is session-only and must not rely on project/latest-session fallback. The bridge command only registers the pending approval; it does **not** by itself create Discord buttons. The Discord button/card is real only after Hermes calls `clarify` with the refined prompt and choices. Non-Discord/manual helper use may keep plain `tm-send --session <id>` or non-approval `tm-send --project <project>` when the user intentionally wants immediate dispatch.
+
+
+## Backend boundary
+
+- `tm-send --session <bridgeSessionId>` is the normal dispatch path for both OMX and GJC bridge sessions.
+- Direct `--tmux` delivery is only for a known managed GJC `--tmux` target when the bridge API path is intentionally bypassed.
+- Do not invent `gjc-send`; GJC sessions created with `tm-new --gjc` still receive follow-up prompts through `tm-send`.
+- For OMX sessions, use the bridge session route (`--session`) rather than a direct `--tmux` fallback. If the bridge route cannot resolve the session, fail closed and report the missing target.
 
 ## Target selection
 
@@ -91,7 +99,7 @@ If line breaks matter, a temp file is allowed, but the temp file content must be
 
 ## Discord approval gate
 
-- Discord reply → Hermes → existing GJC/bridge session dispatch MUST prefer `tm-send --discord-approval` after prompt refinement.
+- Discord reply → Hermes → existing OMX/GJC bridge session dispatch MUST prefer `tm-send --discord-approval` after prompt refinement.
 - Discord-origin approval dispatch MUST be session-only: `tm-send --session <bridgeSessionId> --discord-approval "<refined prompt>"`.
 - Do not call `tm-send --project <project> --discord-approval ...`, and do not combine `--session` and `--project` on the approval path. If only project metadata is available, resolve the concrete bridge session first or fail closed.
 - The approval gate is not a second refinement policy. It displays the already-refined prompt and waits for the operator's 전송/거절/추가수정 decision.

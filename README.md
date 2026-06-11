@@ -11,13 +11,13 @@
 ![localhost first](https://img.shields.io/badge/security-localhost--first-blue)
 ![tests](https://img.shields.io/badge/tests-node%20--test-brightgreen)
 
-`hermes-tmux-bridge` lets Hermes observe and control local GJC tmux sessions without exposing a public control plane. On `gajae-version`, it runs on `127.0.0.1`, discovers sessions from GJC JSONL logs plus managed tmux ownership tags, then forwards selected events to Hermes Gateway / Discord.
+`hermes-tmux-bridge` lets Hermes observe and control local OMX/Codex sessions and explicit GJC tmux sessions without exposing a public control plane. It runs on `127.0.0.1`, discovers sessions from OMX lifecycle evidence, Codex/GJC JSONL logs, and tmux panes, then forwards selected events to Hermes Gateway / Discord.
 
 ```text
 Hermes / Discord
   -> hermes-tmux-bridge on 127.0.0.1
      -> session registry / event router / command dispatch / audit log
-  -> local GJC JSONL logs + managed tmux panes
+  -> local OMX/Codex logs + explicit GJC JSONL logs + tmux panes
 ```
 
 ## What it does
@@ -25,7 +25,7 @@ Hermes / Discord
 - **Session discovery** — merges OMX lifecycle logs, Codex JSONL sessions, and tmux panes into one bridge session view.
 - **Full output access** — reads the latest assistant/final-answer text instead of only short notification previews.
 - **Command dispatch** — sends follow-up instructions into the visible tmux pane through bridge audit paths.
-- **GJC lifecycle control** — launches `gjc --tmux` / `gjc --tmux --worktree <path>` for a target checkout, then stops only managed GJC tmux sessions after validation.
+- **Session lifecycle control** — `tm-new` launches OMX sessions by default; explicit GJC requests use `tm-new --gjc` or `tm-new --gjc --worktree <path>`, and stops only bridge-managed tmux sessions after validation.
 - **Helper CLIs** — installs `tm-new`, `tm-send`, and `tm-kill` for Hermes-friendly session lifecycle operations.
 - **Discord delivery** — routes `AskPermission`, `FinalAnswer`, lifecycle, and command events through Hermes webhook or direct Discord fast-path delivery.
 - **Project channel routing** — resolves, creates, and records project-specific Discord channel mappings.
@@ -63,21 +63,23 @@ Expected health response:
 { "ok": true }
 ```
 
-## GJC control model
+## Session control model
 
-Hermes control of GJC uses the documented external-runner path, not GJC HTTPS bridge session-control endpoints. Start or create a repo/worktree-local GJC tmux runner, send commands through the local tmux dispatch route, and read results from GJC JSONL logs.
+Hermes creates new sessions through `tm-new`. The default backend is OMX (`tm-new [PROJECT_DIR]`). GJC is explicit opt-in (`tm-new --gjc [PROJECT_DIR]` or `tm-new --gjc --worktree <path>`). Hermes should not introduce `gjc-new` or revive legacy `omx-new` aliases.
+
+GJC control uses the documented external-runner path, not GJC HTTPS bridge session-control endpoints. Start or create a repo/worktree-local GJC tmux runner only when GJC is explicitly requested through the local helper, send commands through `tm-send`, and read results from GJC JSONL logs via the bridge session view.
 
 ```bash
-curl -sS -X POST http://127.0.0.1:3037/gjc/sessions \
-  -H 'content-type: application/json' \
-  -d '{"cwd":"/path/to/repo","worktree":"/path/to/worktree"}'
+# Default new session: OMX.
+tm-new /path/to/repo --json
 
-curl -sS -X POST http://127.0.0.1:3037/sessions/<gjc-session-id>/commands \
-  -H 'content-type: application/json' \
-  -d '{"mode":"tmux","commandText":"/skill:ralplan ..."}'
+# Explicit GJC session.
+tm-new --gjc /path/to/repo --json
+tm-new --gjc /path/to/repo --worktree /path/to/worktree --json
 
-curl -sS http://127.0.0.1:3037/sessions/<gjc-session-id>/events
-curl -sS -X POST http://127.0.0.1:3037/sessions/<gjc-session-id>/stop
+# Existing-session follow-up and stop stay on the helper boundary.
+tm-send --session <bridge-session-id> "/skill:ralplan ..."
+tm-kill --session <bridge-session-id>
 ```
 
 GJC `--mode bridge` remains probe/diagnostic-only for this project until GJC officially enables `/commands`, `/events`, and `/control`. Disabled bridge endpoints must be reported as disabled; they are never silently retried through tmux.

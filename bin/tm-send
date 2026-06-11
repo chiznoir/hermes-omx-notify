@@ -36,7 +36,7 @@ Usage:
   bridgeSessionId, project, activityState, status, tmuxId, lastEventAt
 
 Description:
-  Canonical helper on gajae-version is tm-send.
+  Canonical helper on hermes-tmux-bridge is tm-send.
   Bridge mode sends follow-up commands through the bridge API.
   Direct --tmux mode is managed-only: it rejects untagged tmux targets and requires
   @gjc-profile=1, @gjc-branch=gjc, @gjc-branch-slug, and @gjc-project before dispatch.

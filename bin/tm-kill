@@ -20,8 +20,8 @@ Usage:
   tm-kill --tmux TMUX_TARGET [--force]
 
 Description:
-  Canonical helper on gajae-version is tm-kill.
-  The final action is local tmux kill-session, but only for managed GJC sessions.
+  Canonical helper on hermes-tmux-bridge is tm-kill.
+  The final action is local tmux kill-session, but only for verified GJC-managed sessions.
   Direct --tmux targets must already carry verified GJC ownership tags:
     @gjc-profile=1, @gjc-branch=gjc, @gjc-branch-slug, @gjc-project
 USAGE

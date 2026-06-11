@@ -11,7 +11,7 @@ For a bridge + Hermes/Discord install without AgentMemory or CodeGraph, use [`do
 Dependency criteria:
 
 - Node.js **20+** / npm: required for the bridge server, package install, and tests.
-- `tmux`: required for visible managed GJC sessions and `tm-new` / `tm-kill`.
+- `tmux`: required for visible OMX sessions, explicit GJC sessions, and `tm-new` / `tm-kill`.
 - `curl`: required for health checks, install validation, and bridge HTTP calls.
 - `jq`: required by helper CLIs that read bridge JSON or build JSON payloads. Treat it as required when installing `tm-send` and `tm-kill` onto `PATH`.
 - Hermes Gateway: required only when webhook/Discord push delivery is enabled. Agent bridge-only mode can be installed without Gateway.

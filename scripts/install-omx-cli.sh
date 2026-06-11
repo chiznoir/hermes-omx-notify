@@ -3,15 +3,15 @@ set -euo pipefail
 
 usage() {
   cat <<'USAGE'
-Install canonical gajae-version tmux helper CLIs onto PATH.
+Install canonical hermes-tmux-bridge tmux helper CLIs onto PATH.
 
 Usage:
   scripts/install-omx-cli.sh [options]
 
 Installs:
-  tm-new   Start a managed GJC tmux session
+  tm-new   Start an OMX tmux session by default; use --gjc for GJC
   tm-send  Send follow-up commands through the bridge API or managed tmux targets
-  tm-kill  Stop a managed GJC tmux session
+  tm-kill  Stop a bridge-managed tmux session
 
 Options:
   --dir PATH          Target bin directory (default: $OMX_CLI_INSTALL_DIR or ~/.local/bin)

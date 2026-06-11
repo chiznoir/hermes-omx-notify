@@ -1,6 +1,6 @@
 ---
 name: tm-kill
-description: Stop/kill/close an existing managed GJC tmux session selected by bridge session id, project, or tmux id using the local tm-kill helper. Trigger on 종료, kill, 킬, 죽여, stop, close, clean up a managed session. Do not handle new-session creation or prompt delivery.
+description: Stop/kill/close an existing verified managed tmux session selected by bridge session id, project, or tmux id using the local tm-kill helper. Direct tmux targets are GJC-managed only. Trigger on 종료, kill, 킬, 죽여, stop, close, clean up a managed session. Do not handle new-session creation or prompt delivery.
 version: 0.1.0
 prerequisites:
   commands: [tm-kill, tmux, curl, jq]
@@ -17,13 +17,21 @@ metadata:
 
 # TM Kill
 
-Use this skill for existing-session termination. Use `tm-kill` to terminate the managed GJC tmux session associated with a bridge session. This replaces legacy `cwt-kill`.
+Use this skill for existing-session termination. Use `tm-kill` to terminate a verified managed tmux session associated with a bridge session. Direct `--tmux` targets are limited to GJC-managed ownership tags. This replaces legacy `cwt-kill`.
 
 ## Boundary
 
-- Owns: stopping/killing/closing an existing managed GJC tmux session.
+- Owns: stopping/killing/closing an existing verified managed tmux session. Direct target validation is GJC-managed only.
 - Does not own: creating sessions (`tm-new`), sending prompts/approvals (`tm-send`), or bridge read/status inspection (`hermes-tmux-bridge`).
 - In Discord notification replies, the target is the replied alert metadata (`bridge_session_id`, `session:`, or exact `tmux:`), not the latest same-project session.
+
+
+## Backend boundary
+
+- Prefer `--session <bridgeSessionId>` over broad project matching.
+- Direct `--tmux-id` cleanup is only safe for an exact GJC-managed target with ownership tags; use `--dry` first when the target was not resolved from reply metadata.
+- If an OMX session cannot be verified through the supported bridge stop path, fail closed and report unsupported rather than raw-killing an arbitrary tmux session.
+- Do not add a separate `gjc-kill`; explicit GJC sessions still use `tm-kill`.
 
 ## Safety
 
@@ -40,4 +48,4 @@ tm-kill --project <project> --force
 tm-kill --tmux-id <tmuxSession> --force
 ```
 
-Report which managed tmux session was killed and whether bridge still lists any active sessions for the project.
+Report which verified managed tmux session was killed and whether bridge still lists any active sessions for the project.

@@ -30,11 +30,14 @@ This is the bridge operations and read-API skill. It teaches Hermes how to read 
 ## Responsibility Boundary
 
 - `hermes-tmux-bridge`: bridge server health, session list, session state, latest idle/final answer fullText, session events, command/interactions history, Discord notification rendering, channel/thread payload interpretation.
-- `tm-new`: create/start a new visible managed GJC tmux session.
+- `tm-new`: create/start a new visible OMX tmux session by default; use `tm-new --gjc` only for explicit GJC sessions.
 - `tm-send`: send/refine a follow-up instruction or approval/denial into an existing session.
-- `tm-kill`: stop/kill/close an existing managed GJC tmux session.
+- `tm-kill`: stop/kill/close an existing verified managed tmux session; direct tmux targets are GJC-managed only and OMX must fail closed if unsupported.
 
 When a user intent is lifecycle or dispatch, load and follow the dedicated skill. Do not duplicate its command rules here. This avoids duplicate prompt-refinement or lifecycle rules.
+
+
+Hermes launch policy: default new sessions are OMX (`tm-new`). GJC is opt-in (`tm-new --gjc`, optionally `--worktree PATH`). Do not create or reference `gjc-new`, and do not resurrect legacy `omx-new` alias behavior.
 
 ## Intent Handoff
 
@@ -48,7 +51,7 @@ Use bridge read endpoints for explanation/status requests only:
 
 Delegate mutation intents:
 
-- “새 세션”, “세션 열어”, “시작해”, “launch/create/watch a new OMX session” -> use `tm-new` skill.
+- “새 세션”, “세션 열어”, “시작해”, “launch/create/watch a new OMX session” -> use `tm-new` skill. “GJC로 열어”, “gjc --tmux로 시작” -> use `tm-new --gjc` through the same skill.
 - “전달”, “전달해”, “보내”, “넘겨”, “세션에 전달”, “follow-up”, “이거 반영”, “수정”, “고쳐”, “계속”, “진행” -> use `tm-send` skill. In notification replies, route by the replied alert's `bridge_session_id`; never switch to a latest same-project session.
 - “종료”, “이 세션 종료해”, “kill”, “킬”, “죽여”, “stop/close session” -> use `tm-kill` skill. In notification replies, the target is the replied alert's `bridge_session_id` or exact `tmux` metadata.
 - AskPermission approval/denial (`/approve`, `/deny`, `/approve session`, `/approve always`) -> use `tm-send` skill with the exact reply option for the same `bridge_session_id`.

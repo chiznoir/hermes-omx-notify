@@ -426,7 +426,7 @@ test('operations docs identify runtime Hermes rule injection surfaces', async ()
     'skills/hermes-tmux-bridge/SKILL.md',
     'src/hermes-webhook-sink.js',
     'src/server.js',
-    'GJC tmux lifecycle',
+    '`tm-new` default는 OMX',
   ]) {
     assert.match(operationsSource, new RegExp(needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   }
@@ -446,8 +446,11 @@ test('Hermes docs track current repository helper CLI contract', async () => {
   assert.match(sources, /repository(?:'s)? `bin\/`|repository의 `bin\/`/);
   assert.match(sources, /scripts\/install-omx-cli\.sh --force/);
   assert.match(sources, /scripts\/install-hermes-stack\.sh --non-interactive/);
-  assert.match(sources, /tm-new \[PROJECT_DIR\].*--json.*--no-check.*GJC_ARGS/s);
-  assert.match(sources, /rather than raw `gjc`|raw `gjc`/s);
+  assert.match(sources, /tm-new \[a\] \[PROJECT_DIR\].*--json.*--runs PATH.*OMX_ARGS/s);
+  assert.match(sources, /tm-new \[a\] --gjc \[PROJECT_DIR\].*--worktree PATH.*GJC_ARGS/s);
+  assert.match(sources, /default backend is OMX|기본 backend는 OMX|default new sessions are OMX/s);
+  assert.match(sources, /GJC.*tm-new --gjc|tm-new --gjc.*GJC/s);
+  assert.match(sources, /Do not create a separate `gjc-new` helper|별도 `gjc-new` helper/s);
   assert.match(sources, /--tmux.*--direct.*--disable codex_hooks/s);
   assert.match(sources, /tm-send --session SESSION_ID.*--dry\|--dry-run.*--hold\|--no-submit/s);
   assert.match(sources, /tm-send --session <bridgeSessionId> --discord-approval/);
@@ -561,7 +564,7 @@ test('tm-send dispatch skill cannot bypass prompt refinement when loaded directl
   assert.match(skillSource, /not mere proofreading and not raw copy\/paste/);
   assert.match(skillSource, /Use `tm-send --raw` only when the user explicitly requests/);
   assert.match(skillSource, /Discord approval gate/);
-  assert.match(skillSource, /Discord reply → Hermes → existing GJC\/bridge session dispatch MUST prefer `tm-send --discord-approval`/);
+  assert.match(skillSource, /Discord reply → Hermes → existing OMX\/GJC bridge session dispatch MUST prefer `tm-send --discord-approval`/);
   assert.match(skillSource, /not a second refinement policy/);
   assert.match(skillSource, /delivery\.status == "approval-pending".*clarify/s);
   assert.match(skillSource, /do not claim buttons exist/);

@@ -25,7 +25,7 @@ Hermes / Discord
 - **세션 발견** — OMX lifecycle log, Codex JSONL session, tmux pane을 하나의 bridge session view로 병합합니다.
 - **전체 출력 조회** — 짧은 notification preview가 아니라 최신 assistant/final-answer 원문을 읽습니다.
 - **명령 전달** — bridge audit path를 통해 visible tmux pane에 후속 지시를 전달합니다.
-- **GJC lifecycle 제어** — target checkout에서 `gjc --tmux` / `gjc --tmux --worktree <path>`를 실행하고, 검증된 managed GJC tmux session만 종료합니다.
+- **세션 lifecycle 제어** — `tm-new`은 기본으로 OMX 세션을 열고, GJC가 명시된 경우에만 `tm-new --gjc` 또는 `tm-new --gjc --worktree <path>`를 사용하며, 검증된 bridge-managed tmux session만 종료합니다.
 - **Helper CLI** — Hermes가 쓰기 쉬운 `tm-new`, `tm-send`, `tm-kill` lifecycle 도구를 설치합니다.
 - **Discord delivery** — `AskPermission`, `FinalAnswer`, lifecycle, command event를 Hermes webhook 또는 direct Discord fast path로 전달합니다.
 - **프로젝트 채널 라우팅** — 프로젝트별 Discord channel mapping을 찾거나 만들고 기록합니다.
@@ -63,21 +63,23 @@ command -v tm-new tm-send tm-kill
 { "ok": true }
 ```
 
-## GJC 제어 모델
+## 세션 제어 모델
 
-Hermes의 GJC 제어는 GJC HTTPS bridge session-control endpoint가 아니라, 공식 문서의 external-runner 경로를 사용합니다. repo/worktree별 GJC tmux runner를 만들거나 붙고, 로컬 tmux dispatch route로 명령을 보내고, 결과는 GJC JSONL log에서 읽습니다.
+Hermes의 새 세션 생성은 `tm-new`을 통합니다. 기본 backend는 OMX(`tm-new [PROJECT_DIR]`)이고, GJC는 명시 opt-in(`tm-new --gjc [PROJECT_DIR]` 또는 `tm-new --gjc --worktree <path>`)입니다. `gjc-new`를 만들거나 legacy `omx-new` alias를 되살리지 않습니다.
+
+GJC 제어는 GJC HTTPS bridge session-control endpoint가 아니라, 공식 문서의 external-runner 경로를 사용합니다. GJC가 명시된 경우에만 로컬 helper로 repo/worktree별 GJC tmux runner를 만들거나 붙고, 명령은 `tm-send`로 보내며, 결과는 bridge session view가 읽는 GJC JSONL log에서 확인합니다.
 
 ```bash
-curl -sS -X POST http://127.0.0.1:3037/gjc/sessions \
-  -H 'content-type: application/json' \
-  -d '{"cwd":"/path/to/repo","worktree":"/path/to/worktree"}'
+# 기본 새 세션: OMX.
+tm-new /path/to/repo --json
 
-curl -sS -X POST http://127.0.0.1:3037/sessions/<gjc-session-id>/commands \
-  -H 'content-type: application/json' \
-  -d '{"mode":"tmux","commandText":"/skill:ralplan ..."}'
+# 명시적 GJC 세션.
+tm-new --gjc /path/to/repo --json
+tm-new --gjc /path/to/repo --worktree /path/to/worktree --json
 
-curl -sS http://127.0.0.1:3037/sessions/<gjc-session-id>/events
-curl -sS -X POST http://127.0.0.1:3037/sessions/<gjc-session-id>/stop
+# 기존 세션 follow-up과 종료는 helper 경계를 유지합니다.
+tm-send --session <bridge-session-id> "/skill:ralplan ..."
+tm-kill --session <bridge-session-id>
 ```
 
 GJC `--mode bridge`는 GJC가 `/commands`, `/events`, `/control`을 공식 enable하기 전까지 이 프로젝트에서 probe/diagnostic 전용입니다. disabled bridge endpoint는 disabled로 보고하며, tmux로 조용히 재시도하지 않습니다.
