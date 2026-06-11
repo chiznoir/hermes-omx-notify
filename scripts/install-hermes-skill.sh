@@ -114,7 +114,7 @@ install_skill "$name" "$source_dir"
 
 installed_helper_skills=()
 if [[ "$install_helper_skills" == "1" && "$name" == "hermes-tmux-bridge" && "$source_dir" == "$repo_root/skills/hermes-tmux-bridge" ]]; then
-  for legacy_helper_skill in tmux-new tmux-send tmux-kill; do
+  for legacy_helper_skill in omx-new omx-send omx-kill tmux-new tmux-send tmux-kill; do
     remove_installed_skill "$legacy_helper_skill"
   done
   while IFS="|" read -r helper_skill helper_source_dir; do

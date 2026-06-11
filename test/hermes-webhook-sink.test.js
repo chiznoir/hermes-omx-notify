@@ -601,6 +601,7 @@ test('tm-send dispatch skill cannot bypass prompt refinement when loaded directl
   assert.match(skillSource, /추가수정.*재정제.*new approval-gated `tm-send`/s);
   assert.match(installerSource, /Helper skills/);
   assert.match(installerSource, /tm-new\|skills\/tm-new/);
+  assert.match(installerSource, /omx-new omx-send omx-kill tmux-new tmux-send tmux-kill/);
   const stackInstallerSource = await readFile(join(process.cwd(), 'scripts', 'install-hermes-stack.sh'), 'utf8');
   assert.match(stackInstallerSource, /--skills hermes-tmux-bridge,tm-new,tm-send,tm-kill/);
   assert.match(stackInstallerSource, /skills: \['hermes-tmux-bridge', 'tm-new', 'tm-send', 'tm-kill'\]/);
